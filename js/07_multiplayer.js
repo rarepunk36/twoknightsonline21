@@ -1009,7 +1009,6 @@ function applyState(state) {
   }
 
   clearReachable();
-  reachableKeys = new Set(state.reachableKeys || []);
   if (ballistaModePlayerIndex === currentPlayerIndex && typeof showBallistaRange === "function") {
     showBallistaRange(ballistaModePlayerIndex);
   } else if (typeof harpoonModePlayerIndex !== "undefined" && harpoonModePlayerIndex === currentPlayerIndex && typeof showHarpoonTargets === "function") {
