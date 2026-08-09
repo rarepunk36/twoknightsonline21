@@ -759,11 +759,24 @@ function applyState(state) {
   lastStateUpdateAt = Date.now();
   markNetworkEvent("applyState");
 
+  const prevCurrentPlayerIndex = currentPlayerIndex;
+  const prevMovesRemaining = movesRemaining;
+  const hasActiveLocalTurn = typeof localPlayerIndex === "number" && prevCurrentPlayerIndex === localPlayerIndex && prevMovesRemaining > 0;
+
   currentPlayerIndex = Object.prototype.hasOwnProperty.call(state, "currentPlayerIndex") ? state.currentPlayerIndex : currentPlayerIndex;
+  // Не даём стейт-синку перехватывать ход локального игрока:
+  // если у локального игрока был активный ход — не меняем currentPlayerIndex.
+  if (hasActiveLocalTurn && currentPlayerIndex !== localPlayerIndex) {
+    currentPlayerIndex = localPlayerIndex;
+  }
   if (typeof syncPreparedBlockingModalTurn === "function") {
     syncPreparedBlockingModalTurn(currentPlayerIndex);
   }
   movesRemaining = Object.prototype.hasOwnProperty.call(state, "movesRemaining") ? state.movesRemaining : movesRemaining;
+  // Аналогично: не даём обнулить ходы локальному игроку пока он ходит.
+  if (hasActiveLocalTurn && movesRemaining <= 0) {
+    movesRemaining = prevMovesRemaining;
+  }
   lastRoll = Object.prototype.hasOwnProperty.call(state, "lastRoll") ? state.lastRoll : lastRoll;
   lastRollText = Object.prototype.hasOwnProperty.call(state, "lastRollText") ? state.lastRollText : lastRollText;
   lastDie1 = Object.prototype.hasOwnProperty.call(state, "lastDie1") ? state.lastDie1 : lastDie1;
