@@ -449,6 +449,10 @@ const TROLL_CAVE_ENTRANCE_CELL_NUMBERS = [
   [43, 44, 63]
 ];
 const TROLL_CAVE_PIT_CELL_NUMBER = 137;
+const TROLL_CAVE_PIT_FIRST_SPAWN_MIN_TURN = 20;
+const TROLL_CAVE_PIT_FIRST_SPAWN_MAX_TURN = 30;
+const TROLL_CAVE_PIT_RESPAWN_MIN_TURNS = 15;
+const TROLL_CAVE_PIT_RESPAWN_MAX_TURNS = 30;
 const TROLL_CAVE_BLOCKED_CELL_NUMBERS_RAW = [
   1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
   21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
@@ -471,7 +475,12 @@ const TROLL_CAVE_BLOCKED_KEYS = new Set(TROLL_CAVE_BLOCKED_CELL_NUMBERS.map(numb
 let trollCaveInteriorState = {
   generation: 0,
   sourceCaveIndex: null,
-  lootByPos: {}
+  lootByPos: {},
+  pitActive: false,
+  pitNextSpawnTurn: randomIntRange(
+    TROLL_CAVE_PIT_FIRST_SPAWN_MIN_TURN,
+    TROLL_CAVE_PIT_FIRST_SPAWN_MAX_TURN
+  )
 };
 
 function getTrollCaveCellKeyByNumber(number) {
@@ -487,6 +496,40 @@ function getTrollCaveEntranceIndexByKey(key) {
   return TROLL_CAVE_ENTRANCE_CELL_NUMBERS.findIndex(numbers =>
     numbers.some(number => getTrollCaveCellKeyByNumber(number) === key)
   );
+}
+
+function isTrollCavePitActive() {
+  return Boolean(trollCaveInteriorState?.pitActive);
+}
+
+function handleTrollCavePitSpawn() {
+  if (!trollCaveInteriorState || isTrollCavePitActive()) return false;
+  if (!Number.isFinite(trollCaveInteriorState.pitNextSpawnTurn)) {
+    trollCaveInteriorState.pitNextSpawnTurn = turnCounter + randomIntRange(
+      TROLL_CAVE_PIT_RESPAWN_MIN_TURNS,
+      TROLL_CAVE_PIT_RESPAWN_MAX_TURNS
+    );
+  }
+  if (turnCounter < trollCaveInteriorState.pitNextSpawnTurn) return false;
+  trollCaveInteriorState.pitActive = true;
+  trollCaveInteriorState.pitNextSpawnTurn = null;
+  return true;
+}
+
+function consumeTrollCavePit(options = {}) {
+  if (!trollCaveInteriorState || !isTrollCavePitActive()) return false;
+  trollCaveInteriorState.pitActive = false;
+  trollCaveInteriorState.pitNextSpawnTurn = turnCounter + randomIntRange(
+    TROLL_CAVE_PIT_RESPAWN_MIN_TURNS,
+    TROLL_CAVE_PIT_RESPAWN_MAX_TURNS
+  );
+  if (options.refresh !== false && typeof refreshVisibleWorld === "function") {
+    refreshVisibleWorld();
+  }
+  if (options.emit !== false && typeof emitStateNow === "function") {
+    emitStateNow(true);
+  }
+  return true;
 }
 
 function clearTrollCaveInteriorPosition() {

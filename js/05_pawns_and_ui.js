@@ -3211,6 +3211,7 @@ function depositTrollCarriedLootInCave(caveIndex, options = {}) {
   });
   trollState.carriedCaveLootSlots = remainingCarriedLoot;
   trollCaveInteriorState = {
+    ...trollCaveInteriorState,
     generation,
     sourceCaveIndex: caveIndex,
     lootByPos
@@ -3757,7 +3758,7 @@ function renderTrollCaveView() {
 
   const pitKey = getTrollCaveCellKeyByNumber(TROLL_CAVE_PIT_CELL_NUMBER);
   const pitCell = grid[pitKey];
-  if (pitCell) {
+  if (pitCell && isTrollCavePitActive()) {
     pitCell.classList.remove("blocked");
     pitCell.classList.add("important", "special", "troll-cave-pit");
     setCellIcon(pitCell, "wormhole.png", "Яма в нижний мир");
@@ -10561,6 +10562,9 @@ function completeTurnAdvance() {
   tickAllTimedBuffs();
   collectCastleIncomes(currentPlayerIndex);
   turnCounter += 1;
+  if (typeof handleTrollCavePitSpawn === "function") {
+    handleTrollCavePitSpawn();
+  }
   const currentTOD = getTimeOfDay().key;
   if (currentTOD !== prevTimeOfDayKey && currentTOD === "morning") {
     clearTrollCaveResourceLootForMorning({ refresh: false });
@@ -11014,7 +11018,11 @@ function finalizeMove(gridX, gridY) {
   updatePawns();
 
   if ((currentPlayer.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_TROLL_CAVE) {
-    if (getTrollCaveCellNumber(gridX, gridY) === TROLL_CAVE_PIT_CELL_NUMBER) {
+    if (
+      getTrollCaveCellNumber(gridX, gridY) === TROLL_CAVE_PIT_CELL_NUMBER &&
+      isTrollCavePitActive() &&
+      consumeTrollCavePit({ refresh: false, emit: false })
+    ) {
       enterUnderworld(currentPlayerIndex, {
         consumeUpperWormhole: false,
         sourceLabel: "Яма в пещере троллей утащила вас на нижний уровень."
@@ -11879,7 +11887,16 @@ function resetGameState() {
   if (typeof TROLL_CAVES !== "undefined") {
     TROLL_CAVES.forEach(cave => (cave.looted = false));
   }
-  trollCaveInteriorState = { generation: 0, sourceCaveIndex: null, lootByPos: {} };
+  trollCaveInteriorState = {
+    generation: 0,
+    sourceCaveIndex: null,
+    lootByPos: {},
+    pitActive: false,
+    pitNextSpawnTurn: randomIntRange(
+      TROLL_CAVE_PIT_FIRST_SPAWN_MIN_TURN,
+      TROLL_CAVE_PIT_FIRST_SPAWN_MAX_TURN
+    )
+  };
   if (typeof initTrollState === "function") initTrollState();
 
   gameTimerSeconds = 0;
