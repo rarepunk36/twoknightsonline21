@@ -22,6 +22,8 @@ function attackWerewolfForCurrentPlayer(targetX, targetY, movePlayerToTarget = f
 
 game.addEventListener("click", e => {
   if (gameEnded) return;
+  if (typeof ballistaShotInFlight !== "undefined" && ballistaShotInFlight) return;
+  if (typeof harpoonAnimationInFlight !== "undefined" && harpoonAnimationInFlight) return;
   if (
     typeof socket !== "undefined" &&
     socket &&
@@ -38,7 +40,10 @@ game.addEventListener("click", e => {
   const gridX = Math.floor(clickX / cellSize);
   const gridY = Math.floor(clickY / cellSize);
 
-  if (gridX < 0 || gridX >= COLS || gridY < 0 || gridY >= ROWS) return;
+  const visibleDimensions = typeof getVisibleWorldDimensions === "function"
+    ? getVisibleWorldDimensions()
+    : { cols: COLS, rows: ROWS };
+  if (gridX < 0 || gridX >= visibleDimensions.cols || gridY < 0 || gridY >= visibleDimensions.rows) return;
 
   const currentPlayer = players[currentPlayerIndex];
   const key = `${gridX},${gridY}`;
@@ -54,12 +59,73 @@ game.addEventListener("click", e => {
     tryBallistaShot(gridX, gridY);
     return;
   }
+  if (typeof harpoonModePlayerIndex !== "undefined" && harpoonModePlayerIndex === currentPlayerIndex) {
+    tryUseHarpoonAtCell(currentPlayerIndex, gridX, gridY);
+    return;
+  }
   if (bridgeModePlayerIndex === currentPlayerIndex) {
     tryApplyBridgeToCell(currentPlayerIndex, key);
     return;
   }
   if (typeof voidShardModePlayerIndex !== "undefined" && voidShardModePlayerIndex === currentPlayerIndex) {
     tryApplyVoidShardToCell(currentPlayerIndex, key);
+    return;
+  }
+  if ((currentPlayer.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_TROLL_CAVE) {
+    if (gridX === currentPlayer.x && gridY === currentPlayer.y) {
+      const entranceIndex = getTrollCaveEntranceIndexByKey(key);
+      if (movesRemaining <= 0 || entranceIndex < 0) return;
+      movesRemaining = 0;
+      clearReachable();
+      exitTrollCave(currentPlayerIndex, entranceIndex);
+      endTurn();
+      return;
+    }
+    if (movesRemaining <= 0 || !reachableKeys.has(key)) return;
+    if (
+      typeof isTrollInCave === "function" &&
+      isTrollInCave() &&
+      trollState?.interiorKey === key
+    ) {
+      showPrivatePickupToastForPlayer(currentPlayerIndex, "Тролль преградил путь.");
+      return;
+    }
+    const caveDefenderIndex = players.findIndex((player, index) => {
+      return index !== currentPlayerIndex &&
+        (player.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_TROLL_CAVE &&
+        player.x === gridX &&
+        player.y === gridY;
+    });
+    if (caveDefenderIndex !== -1) {
+      if (typeof isNonAggressionPactActive === "function" && isNonAggressionPactActive()) {
+        showPrivatePickupToastForPlayer(currentPlayerIndex, "Пакт о ненападении запрещает атаковать другого игрока.");
+        return;
+      }
+      if (currentPlayer.pocket.army <= 0) {
+        showPickupToast(`Игрок ${currentPlayerIndex + 1} не может атаковать: в кармане нет войск.`);
+        return;
+      }
+      if ((players[caveDefenderIndex].invulnTurnsRemaining || 0) > 0) {
+        showPickupToast("На противника действует неприкосновенность — атака невозможна.");
+        showReachable();
+        refreshTurnControls();
+        return;
+      }
+      clearReachable();
+      currentPlayer.x = gridX;
+      currentPlayer.y = gridY;
+      movesRemaining = 0;
+      updatePawns();
+      players.forEach((_, index) => updatePlayerResources(index));
+      beginPlayerBattleCardSelection(currentPlayerIndex, caveDefenderIndex, {
+        targetX: gridX,
+        targetY: gridY,
+        noSteal: false,
+        defenderOwnsCastle: false
+      });
+      return;
+    }
+    finalizeMove(gridX, gridY);
     return;
   }
   if ((currentPlayer.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_UNDER) {
@@ -185,6 +251,10 @@ game.addEventListener("click", e => {
   });
 
   if (defenderIndex !== -1) {
+    if (typeof isTavernSafeCell === "function" && isTavernSafeCell(key, currentPlayer.layer || WORLD_LAYER_UPPER)) {
+      finalizeMove(gridX, gridY);
+      return;
+    }
     if (typeof isNonAggressionPactActive === "function" && isNonAggressionPactActive()) {
       showPrivatePickupToastForPlayer(currentPlayerIndex, "Пакт о ненападении запрещает атаковать другого игрока.");
       return;
@@ -196,7 +266,13 @@ game.addEventListener("click", e => {
       showPickupToast(`${attackerLabel} не может атаковать: в кармане нет войск.`);
       return;
     }
-    clearReachable();
+    if ((players[defenderIndex].invulnTurnsRemaining || 0) > 0) {
+      showPickupToast("На противника действует неприкосновенность — атака невозможна.");
+      showReachable();
+      refreshTurnControls();
+      return;
+    }
+
     const castleKey = getCastleBaseKeyForPos(gridX, gridY) || key;
     const node = nodeByPos[castleKey];
     const defenderOwnsCastle =
@@ -204,26 +280,20 @@ game.addEventListener("click", e => {
       node.type === "castle" &&
       typeof castleOwnersByKey !== "undefined" &&
       castleOwnersByKey[castleKey] === defenderIndex;
-    const battleResult = resolveBattle(currentPlayerIndex, defenderIndex, { noSteal: defenderOwnsCastle });
-    const attackerWon = battleResult && battleResult.winnerIndex === currentPlayerIndex;
-    if (attackerWon) {
-      // Soft guard against rare desyncs: place the attacker onto the defeated target cell
-      // before running the normal post-move pipeline.
-      currentPlayer.x = gridX;
-      currentPlayer.y = gridY;
-      updatePawns();
-    }
-    if (defenderOwnsCastle && attackerWon) {
-      showPickupToast("Победа над игроком. Начинается штурм замка.");
-      finalizeMove(gridX, gridY);
-      return;
-    }
-    if (attackerWon) {
-      finalizeMove(gridX, gridY);
-    } else {
-      endTurn();
-    }
-    showBattleModal(battleResult);
+
+    clearReachable();
+    // PvP начинается только после перемещения атакующего на целевую клетку.
+    currentPlayer.x = gridX;
+    currentPlayer.y = gridY;
+    movesRemaining = 0;
+    updatePawns();
+    players.forEach((_, index) => updatePlayerResources(index));
+    beginPlayerBattleCardSelection(currentPlayerIndex, defenderIndex, {
+      targetX: gridX,
+      targetY: gridY,
+      noSteal: defenderOwnsCastle,
+      defenderOwnsCastle
+    });
     return;
   }
   if (barbarianTarget) {

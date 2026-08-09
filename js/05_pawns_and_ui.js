@@ -11,6 +11,7 @@ const players = [
     y: startNode.y,
     layer: "upper",
     underworldState: null,
+    trollCaveEntranceIndex: null,
     resources: {gold: 0, army: 0, influence: 0, resources: 0},
     pocket: {gold: 0, army: 0, resources: 0},
     income: {resources: 0},
@@ -37,7 +38,10 @@ const players = [
     tokenCount: 0,
     bootsCount: 0,
     ballistaCount: 0,
+    ballistaLevel: 0,
+    ballistaShotsThisTurn: 0,
     boltCount: 0,
+    harpoonCount: 0,
     ringCount: 0,
     terrorRingCount: 0,
     rainbowStoneCount: 0,
@@ -52,6 +56,11 @@ const players = [
     hasCrystalSword: false,
     trapStunCount: 0,
     bridgeCount: 0,
+    beerProtectionTurnsRemaining: 0,
+    beerSlowTurnsRemaining: 0,
+    beerEffectStartedTurn: null,
+    tavernWheelPlaysThisTurn: 0,
+    tavernDragonPlaysThisTurn: 0,
     stoneBonusRollsRemaining: 0,
     stoneSpeedTurnsRemaining: 0,
     stunnedTurnsRemaining: 0,
@@ -66,6 +75,7 @@ const players = [
     y: startNode.y,
     layer: "upper",
     underworldState: null,
+    trollCaveEntranceIndex: null,
     resources: {gold: 0, army: 0, influence: 0, resources: 0},
     pocket: {gold: 0, army: 0, resources: 0},
     income: {resources: 0},
@@ -92,7 +102,10 @@ const players = [
     tokenCount: 0,
     bootsCount: 0,
     ballistaCount: 0,
+    ballistaLevel: 0,
+    ballistaShotsThisTurn: 0,
     boltCount: 0,
+    harpoonCount: 0,
     ringCount: 0,
     terrorRingCount: 0,
     rainbowStoneCount: 0,
@@ -107,6 +120,11 @@ const players = [
     hasCrystalSword: false,
     trapStunCount: 0,
     bridgeCount: 0,
+    beerProtectionTurnsRemaining: 0,
+    beerSlowTurnsRemaining: 0,
+    beerEffectStartedTurn: null,
+    tavernWheelPlaysThisTurn: 0,
+    tavernDragonPlaysThisTurn: 0,
     stoneBonusRollsRemaining: 0,
     stoneSpeedTurnsRemaining: 0,
     stunnedTurnsRemaining: 0,
@@ -148,7 +166,18 @@ let pendingGuardPlayerIndex = null;
 const POTION_INVIS_TURNS = 25;
 const POTION_LUCK_TURNS = 25;
 const CLOVER_LUCK_TURNS = 18;
+const TAVERN_CELL_KEY = "1,1";
+const TAVERN_BEER_COST = 250;
+const TAVERN_BEER_PROTECTION_TURNS = 6;
+const TAVERN_BEER_SLOW_TURNS = 10;
+const TAVERN_BEER_SLOW_PENALTY = 4;
+const TAVERN_WHEEL_MAX_PLAYS_PER_TURN = 3;
+const TAVERN_WHEEL_SPIN_DURATION_MS = 3000;
+const TAVERN_DRAGON_MAX_PLAYS_PER_TURN = 2;
+const TAVERN_DRAGON_GROWTH_MS = 9000;
+const TAVERN_DRAGON_MAX_MULTIPLIER = 50;
 const BALLISTA_COST = 600;
+const BALLISTA_LEVEL_2_COST = 1000;
 const BOLT_COST = 125;
 const TRAP_STUN_COST = 100;
 const TRAP_STUN_DURATION = 3;
@@ -156,6 +185,9 @@ const SPECIAL_ARTIFACT_SLOT_LIMIT = 3;
 const BALLISTA_RANGE = 12;
 const BALLISTA_DAMAGE_MIN = 13;
 const BALLISTA_DAMAGE_MAX = 17;
+const HARPOON_GOLD_COST = 1000;
+const HARPOON_RESOURCE_COST = 500;
+const HARPOON_RANGE = 12;
 const BRIDGE_COST = 300;
 const CASTLE_MINE_LEVEL_2_COST = 300;
 const CASTLE_MINE_LEVEL_2_INCOME = 30;
@@ -164,6 +196,7 @@ const WORLD_EVENT_MAX_TURN = 300;
 const WORLD_EVENT_TRIGGER_CHANCE = 0.5;
 const WORLD_EVENT_GOLD_TAX_MULTIPLIER = 1.3;
 const WORLD_EVENT_TROLL_HUNT_GOLD_REWARD = 1000;
+const ROYAL_MESSENGER_EVENT_ENABLED = false;
 const ROYAL_MESSENGER_MIN_TURN = 75;
 const ROYAL_MESSENGER_MAX_TURN = 350;
 const ROYAL_MESSENGER_MIN_SPAWNS = 1;
@@ -204,13 +237,40 @@ const FOG_OF_WAR_MIN_TURN = 3;
 const FOG_OF_WAR_MAX_TURN = 350;
 const FOG_OF_WAR_MIN_SPAWNS = 1;
 const FOG_OF_WAR_MAX_SPAWNS = 3;
-const FOG_OF_WAR_MIN_DURATION = 20;
-const FOG_OF_WAR_MAX_DURATION = 30;
+const FOG_OF_WAR_MIN_DURATION = 10;
+const FOG_OF_WAR_MAX_DURATION = 15;
 const FOG_OF_WAR_PLAYER_RADIUS = 4;
 const FOG_OF_WAR_ICON_COUNT = 3;
 const FOG_OF_WAR_EVENT_ENABLED = true;
 const ROYAL_TAX_EVENT_ENABLED = false;
 const HERO_BATTLE_INFLUENCE_LOSS = 50;
+const PLAYER_BATTLE_CARD_REVEAL_DELAY = 1400;
+const PLAYER_BATTLE_CARD_RULES = {
+  attack: {
+    key: "attack",
+    name: "Атака",
+    mark: "⚔",
+    always: "Личная атака героя усилена на 125%.",
+    victory: "20% армии наносит удар 1 к 1 без ответа.",
+    beats: "feint"
+  },
+  defense: {
+    key: "defense",
+    name: "Оборона",
+    mark: "◆",
+    always: "75% армии уходит в резерв и точно выживает.",
+    victory: "При поражении в бою противник заберёт только 25% добычи вместо 80%.",
+    beats: "attack"
+  },
+  feint: {
+    key: "feint",
+    name: "Финт",
+    mark: "✦",
+    always: "Личная атака противника ослаблена на 75%.",
+    victory: "50% шанс выбить случайный предмет противника.",
+    beats: "defense"
+  }
+};
 const KING_CONCERN_ROLL_PENALTY = 3;
 const WORLD_EVENTS = {
   nonAggressionPact: {
@@ -330,6 +390,11 @@ let fullMoonEventState = null;
 let scheduledFogOfWarTurns = [];
 let pendingFogOfWarEvents = 0;
 let fogOfWarState = null;
+let pendingPlayerBattle = null;
+let playerBattleSequenceId = 0;
+let playerBattleRevealState = null;
+let playerBattleResolveTimer = null;
+let localPlayerBattleSelection = null;
 const fogOfWarVariantsByKey = {};
 let kingAuctionState = normalizeKingAuctionState();
 let kingAuctionViewerPlayerIndex = null;
@@ -633,7 +698,16 @@ function getKingAuctionIntroText() {
 function canPlayerBuildMineLevel2(playerIndex) {
   return mineLevel2OwnerPlayerIndex === null || mineLevel2OwnerPlayerIndex === playerIndex;
 }
+
+function getPlayerBallistaLevel(player) {
+  if (!player || (player.ballistaCount || 0) <= 0) return 0;
+  return Math.max(1, Math.min(2, Math.floor(Number(player.ballistaLevel) || 1)));
+}
+
 let ballistaModePlayerIndex = null;
+let ballistaShotInFlight = false;
+let harpoonModePlayerIndex = null;
+let harpoonAnimationInFlight = false;
 let bridgeModePlayerIndex = null;
 let voidShardModePlayerIndex = null;
 const bridgeOpenedKeys = new Set();
@@ -649,6 +723,7 @@ const INVENTORY_ITEMS = [
   {key: "boots", label: "Сапоги", icon: "boots.png", count: player => player.bootsCount || 0},
   {key: "ballista", label: "Баллиста", icon: "ballista.png", count: player => player.ballistaCount || 0, useAction: "ballista"},
   {key: "bolt", label: "Болт", icon: "ballista_bolt.png", count: player => player.boltCount || 0},
+  {key: "harpoon", label: "Горпун", icon: "harpoon.png", count: player => player.harpoonCount || 0, useAction: "harpoon"},
   {key: "trap-stun", label: "Ловушка-стан", icon: "trap_stun.png?v=1", count: player => player.trapStunCount || 0, useAction: "trap-stun"},
   {key: "bridge", label: "Мост", icon: "stairs.png", count: player => player.bridgeCount || 0, useAction: "bridge"},
   {key: "ring", label: "Кольцо убеждения", icon: "ring_persuasion.png", count: player => player.ringCount || 0},
@@ -668,6 +743,9 @@ const INVENTORY_ITEMS = [
 
 const WORLD_LAYER_UPPER = "upper";
 const WORLD_LAYER_UNDER = "under";
+const WORLD_LAYER_TROLL_CAVE = "troll-cave";
+const TROLL_CAVE_VIEW_ZOOM = 1.28;
+let lastVisibleWorldLayoutLayer = null;
 const TIME_OF_DAY_CYCLE = [
   { key: "day",     label: "День",   duration: 40, bg: 'url("assets/map-plateau.jpg")' },
   { key: "evening", label: "Вечер",  duration: 15, bg: 'url("assets/backgrounds/evening_bg.png")' },
@@ -690,6 +768,7 @@ let prevTimeOfDayKey = null;
 let castleArmorDayBuffReductions = {};
 const FULL_MOON_UPPER_WORLD_BG = 'url("assets/backgrounds/full_moon_bg.png")';
 const UNDERWORLD_BG = 'url("assets/backgrounds/underworld_bg.png")';
+const TROLL_CAVE_INTERIOR_BG = 'url("assets/backgrounds/troll_cave_bg.png")';
 const WORMHOLE_ICON = { file: "wormhole.png", alt: "Червоточина" };
 const STAIRS_ICON = { file: "stairs.png", alt: "Лестница" };
 const UNDERWORLD_GOLD_COUNT = 5;
@@ -730,6 +809,14 @@ function cloneActiveWorldEvents() {
 }
 
 function initRoyalMessengerSchedule() {
+  if (!ROYAL_MESSENGER_EVENT_ENABLED) {
+    scheduledRoyalMessengerTurns = [];
+    pendingRoyalMessengerEvents = 0;
+    while (messengers.length > 0) {
+      removeMessengerAtIndex(messengers.length - 1);
+    }
+    return;
+  }
   const picked = new Set();
   const count = randomIntRange(ROYAL_MESSENGER_MIN_SPAWNS, ROYAL_MESSENGER_MAX_SPAWNS);
   while (picked.size < count) {
@@ -1763,6 +1850,13 @@ function resolveMessengerGuardArrival(messenger) {
 }
 
 function advanceMessengers() {
+  if (!ROYAL_MESSENGER_EVENT_ENABLED) {
+    pendingRoyalMessengerEvents = 0;
+    while (messengers.length > 0) {
+      removeMessengerAtIndex(messengers.length - 1);
+    }
+    return;
+  }
   for (let i = messengers.length - 1; i >= 0; i -= 1) {
     const messenger = messengers[i];
     const targetPlayer = players[messenger.targetPlayerIndex];
@@ -1795,6 +1889,7 @@ function advanceMessengers() {
 }
 
 function startRoyalMessengerEvent() {
+  if (!ROYAL_MESSENGER_EVENT_ENABLED) return false;
   announceRoyalMessengerEvent();
   const pendingPlayers = players
     .map((player, playerIndex) => ({
@@ -1845,9 +1940,15 @@ function startRoyalMessengerEvent() {
       });
       setCellToMessenger(x, y);
     });
+  return true;
 }
 
 function activateScheduledRoyalMessengerEvents() {
+  if (!ROYAL_MESSENGER_EVENT_ENABLED) {
+    scheduledRoyalMessengerTurns = [];
+    pendingRoyalMessengerEvents = 0;
+    return;
+  }
   if (!scheduledRoyalMessengerTurns.length) return;
   const activating = scheduledRoyalMessengerTurns.filter(turn => turn === turnCounter);
   if (!activating.length) return;
@@ -2918,7 +3019,7 @@ function isUpperWorldKeyVisibleToPlayer(key, playerIndex = getViewerWorldPlayerI
 
 function applyFogOfWarMask() {
   const viewerIndex = getViewerWorldPlayerIndex();
-  const visibleKeys = isFogOfWarActive()
+  const visibleKeys = isFogOfWarActive() && getVisibleWorldLayer() === WORLD_LAYER_UPPER
     ? getFogOfWarVisibleKeysForPlayer(viewerIndex)
     : null;
   Object.keys(grid).forEach(key => {
@@ -2942,8 +3043,371 @@ function getPlayerUnderworldState(playerIndex) {
   return players[playerIndex]?.underworldState || null;
 }
 
+function getVisibleWorldDimensions() {
+  if (getVisibleWorldLayer() === WORLD_LAYER_TROLL_CAVE) {
+    return { cols: TROLL_CAVE_INTERIOR_COLS, rows: TROLL_CAVE_INTERIOR_ROWS };
+  }
+  return { cols: COLS, rows: ROWS };
+}
+
+function isInsideTrollCaveBounds(x, y) {
+  return x >= 0 && x < TROLL_CAVE_INTERIOR_COLS && y >= 0 && y < TROLL_CAVE_INTERIOR_ROWS;
+}
+
+function isTrollCaveCellBlocked(x, y) {
+  if (!isInsideTrollCaveBounds(x, y)) return true;
+  return TROLL_CAVE_BLOCKED_KEYS.has(`${x},${y}`);
+}
+
+function getTrollCaveEntranceKeys(caveIndex) {
+  return (TROLL_CAVE_ENTRANCE_CELL_NUMBERS[caveIndex] || []).map(getTrollCaveCellKeyByNumber);
+}
+
+function getFreeTrollCaveEntryPosition(caveIndex, enteringPlayerIndex) {
+  const entranceKeys = getTrollCaveEntranceKeys(caveIndex);
+  const fallbackKey = entranceKeys[0] || "0,0";
+  const [fallbackX, fallbackY] = fallbackKey.split(",").map(Number);
+  const occupied = new Set(players
+    .map((player, index) => ({ player, index }))
+    .filter(({ player, index }) => index !== enteringPlayerIndex && (player?.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_TROLL_CAVE)
+    .map(({ player }) => `${player.x},${player.y}`));
+  if (typeof isTrollInCave === "function" && isTrollInCave() && trollState?.interiorKey) {
+    occupied.add(trollState.interiorKey);
+  }
+  const queue = entranceKeys.map(key => {
+    const [x, y] = key.split(",").map(Number);
+    return { x, y };
+  });
+  const visited = new Set(entranceKeys);
+  while (queue.length) {
+    const current = queue.shift();
+    const key = `${current.x},${current.y}`;
+    if (!isTrollCaveCellBlocked(current.x, current.y) && !occupied.has(key)) {
+      return current;
+    }
+    for (const { dx, dy } of MOVES_DIRS) {
+      const x = current.x + dx;
+      const y = current.y + dy;
+      const nextKey = `${x},${y}`;
+      if (!isInsideTrollCaveBounds(x, y) || visited.has(nextKey)) continue;
+      visited.add(nextKey);
+      queue.push({ x, y });
+    }
+  }
+  return { x: fallbackX, y: fallbackY };
+}
+
+function enterTrollCave(playerIndex, caveIndex) {
+  const player = players[playerIndex];
+  if (!player || caveIndex < 0 || caveIndex >= TROLL_CAVES.length) return false;
+  const entry = getFreeTrollCaveEntryPosition(caveIndex, playerIndex);
+  player.layer = WORLD_LAYER_TROLL_CAVE;
+  player.underworldState = null;
+  player.trollCaveEntranceIndex = caveIndex;
+  player.x = entry.x;
+  player.y = entry.y;
+  refreshVisibleWorld();
+  if (typeof emitStateNow === "function") emitStateNow(true);
+  showPrivatePickupToastForPlayer(playerIndex, `Вы вошли в общую пещеру через вход ${caveIndex + 1}.`);
+  return true;
+}
+
+function exitTrollCave(playerIndex, exitIndex) {
+  const player = players[playerIndex];
+  const cave = TROLL_CAVES[exitIndex];
+  if (!player || !cave) return false;
+  player.layer = WORLD_LAYER_UPPER;
+  player.underworldState = null;
+  player.trollCaveEntranceIndex = null;
+  player.x = cave.x;
+  player.y = cave.y;
+  refreshVisibleWorld();
+  if (typeof emitStateNow === "function") emitStateNow(true);
+  showPrivatePickupToastForPlayer(playerIndex, `Вы вышли из пещеры через выход ${exitIndex + 1}.`);
+  return true;
+}
+
+const TROLL_CAVE_LOOT_DEFS = {
+  gold: { icon: "gold.png", label: "золото" },
+  resources: { icon: "resources.png", label: "ресурсы" },
+  army: { icon: "army.png", label: "войска" },
+  rainbow: { icon: "rainbow_stone.png", label: "радужный камень" },
+  flower: { icon: "mystic_flower.png", label: "таинственный цветок" }
+};
+const TROLL_CAVE_RESOURCE_LOOT_TYPES = new Set(["gold", "resources", "army"]);
+
+function getTrollCaveLootEffectiveAmount(loot) {
+  const baseAmount = Math.max(0, Number(loot?.amount) || 0);
+  if (!TROLL_CAVE_RESOURCE_LOOT_TYPES.has(loot?.typeKey)) return baseAmount;
+  return getTimeOfDay().key === "evening"
+    ? Math.floor(baseAmount * 1.25)
+    : baseAmount;
+}
+
+function getAvailableTrollCaveLootKeys() {
+  const unavailable = new Set(TROLL_CAVE_ENTRANCE_CELL_NUMBERS.flat().map(getTrollCaveCellKeyByNumber));
+  unavailable.add(getTrollCaveCellKeyByNumber(TROLL_CAVE_PIT_CELL_NUMBER));
+  Object.keys(trollCaveInteriorState?.lootByPos || {}).forEach(key => unavailable.add(key));
+  if (trollState?.interiorKey) unavailable.add(trollState.interiorKey);
+  players.forEach(player => {
+    if ((player?.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_TROLL_CAVE) {
+      unavailable.add(`${player.x},${player.y}`);
+    }
+  });
+  const keys = [];
+  for (let y = 0; y < TROLL_CAVE_INTERIOR_ROWS; y += 1) {
+    for (let x = 0; x < TROLL_CAVE_INTERIOR_COLS; x += 1) {
+      const key = `${x},${y}`;
+      if (TROLL_CAVE_BLOCKED_KEYS.has(key) || unavailable.has(key)) continue;
+      keys.push(key);
+    }
+  }
+  for (let index = keys.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [keys[index], keys[swapIndex]] = [keys[swapIndex], keys[index]];
+  }
+  return keys;
+}
+
+function depositTrollCarriedLootInCave(caveIndex, options = {}) {
+  const carriedLoot = Array.isArray(trollState.carriedCaveLootSlots)
+    ? trollState.carriedCaveLootSlots.slice()
+    : [];
+  if (!options.skipArtifactRoll && Math.random() < TROLL_CAVE_ARTIFACT_CHANCE) {
+    carriedLoot.push({ typeKey: "rainbow", amount: 1 });
+  }
+  if (!options.skipArtifactRoll && Math.random() < TROLL_CAVE_ARTIFACT_CHANCE) {
+    carriedLoot.push({ typeKey: "flower", amount: 1 });
+  }
+  const availableKeys = getAvailableTrollCaveLootKeys();
+  const existingResourceCellCount = Object.values(trollCaveInteriorState?.lootByPos || {})
+    .filter(entry => TROLL_CAVE_RESOURCE_LOOT_TYPES.has(entry.typeKey))
+    .length;
+  let availableResourceCells = Math.max(0, TROLL_CAVE_RESOURCE_CELL_LIMIT - existingResourceCellCount);
+  const placedLoot = [];
+  const remainingCarriedLoot = [];
+  carriedLoot.forEach(entry => {
+    const isResource = TROLL_CAVE_RESOURCE_LOOT_TYPES.has(entry.typeKey);
+    if (placedLoot.length >= availableKeys.length || (isResource && availableResourceCells <= 0)) {
+      remainingCarriedLoot.push(entry);
+      return;
+    }
+    placedLoot.push(entry);
+    if (isResource) availableResourceCells -= 1;
+  });
+  const placedCount = placedLoot.length;
+  const generation = (trollCaveInteriorState.generation || 0) + (placedCount > 0 ? 1 : 0);
+  const lootByPos = { ...(trollCaveInteriorState?.lootByPos || {}) };
+  placedLoot.forEach((entry, index) => {
+    const key = availableKeys[index];
+    const [x, y] = key.split(",").map(Number);
+    lootByPos[key] = {
+      ...entry,
+      id: `troll-cave-${generation}-${index + 1}`,
+      key,
+      x,
+      y
+    };
+  });
+  trollState.carriedCaveLootSlots = remainingCarriedLoot;
+  trollCaveInteriorState = {
+    generation,
+    sourceCaveIndex: caveIndex,
+    lootByPos
+  };
+  if (getVisibleWorldLayer() === WORLD_LAYER_TROLL_CAVE) refreshVisibleWorld();
+  if (!options.silent && typeof emitStateNow === "function") emitStateNow(true);
+  return placedCount;
+}
+
+function depositPendingInitialTrollCaveLoot() {
+  if (!Array.isArray(trollState?.carriedCaveLootSlots) || !trollState.carriedCaveLootSlots.length) return 0;
+  if (!Number.isInteger(trollState.currentCaveIndex)) return 0;
+  return depositTrollCarriedLootInCave(trollState.currentCaveIndex, {
+    silent: true,
+    skipArtifactRoll: true
+  });
+}
+
+// При первой загрузке 04-й скрипт создаёт стартовые слоты раньше, чем доступна
+// функция раскладки внутренней пещеры. После инициализации UI раскладываем их здесь.
+depositPendingInitialTrollCaveLoot();
+
+function collectTrollCaveLoot(playerIndex, key) {
+  const player = players[playerIndex];
+  const loot = trollCaveInteriorState?.lootByPos?.[key];
+  if (!player || !loot) return false;
+  const amount = getTrollCaveLootEffectiveAmount(loot);
+  const eveningBonus = amount > (loot.amount || 0) ? " (вечерний бонус ×1,25)" : "";
+  let message = "";
+  let collected = true;
+  if (loot.typeKey === "gold") {
+    player.pocket.gold += amount;
+    message = `В пещере найдено ${amount} золота${eveningBonus}.`;
+  } else if (loot.typeKey === "resources") {
+    player.pocket.resources += amount;
+    message = `В пещере найдено ${amount} ресурсов${eveningBonus}.`;
+  } else if (loot.typeKey === "army") {
+    player.pocket.army += amount;
+    message = `В пещере найдено ${amount} войск${eveningBonus}.`;
+  } else if (loot.typeKey === "rainbow") {
+    collected = tryAddSpecialArtifactToInventory(player, "rainbow");
+    message = collected ? "В пещере найден Радужный камень." : "Радужный камень не помещается: слоты заняты.";
+  } else if (loot.typeKey === "flower") {
+    collected = tryAddSpecialArtifactToInventory(player, "flower");
+    message = collected ? "В пещере найден Таинственный цветок." : "Таинственный цветок не помещается: слоты заняты.";
+  } else {
+    collected = false;
+  }
+  if (collected) {
+    delete trollCaveInteriorState.lootByPos[key];
+  }
+  updatePlayerResources(playerIndex);
+  updateInventory(playerIndex);
+  showPrivatePickupToastForPlayer(playerIndex, message || "Добыча из пещеры подобрана.");
+  refreshVisibleWorld();
+  if (collected && typeof emitStateNow === "function") emitStateNow(true);
+  return collected;
+}
+
+function clearTrollCaveResourceLootForMorning(options = {}) {
+  const lootByPos = trollCaveInteriorState?.lootByPos || {};
+  let removedCount = 0;
+  Object.keys(lootByPos).forEach(key => {
+    const entry = lootByPos[key];
+    if (entry?.typeKey === "rainbow" || entry?.typeKey === "flower") return;
+    delete lootByPos[key];
+    removedCount += 1;
+  });
+  if (removedCount <= 0) return 0;
+  if (options.refresh !== false && getVisibleWorldLayer() === WORLD_LAYER_TROLL_CAVE) {
+    refreshVisibleWorld();
+  }
+  if (!options.silent && typeof emitStateNow === "function") emitStateNow(true);
+  return removedCount;
+}
+
+const TROLL_CAVE_STUN_RANGE = 5;
+const TROLL_CAVE_STUN_CHANCE = 0.5;
+
+function getNearestTrollCaveEntranceIndex(x, y) {
+  let nearestIndex = 0;
+  let nearestDistance = Infinity;
+  TROLL_CAVE_ENTRANCE_CELL_NUMBERS.forEach((numbers, caveIndex) => {
+    numbers.forEach(number => {
+      const key = getTrollCaveCellKeyByNumber(number);
+      const [entranceX, entranceY] = key.split(",").map(Number);
+      const distance = Math.abs(x - entranceX) + Math.abs(y - entranceY);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = caveIndex;
+      }
+    });
+  });
+  return nearestIndex;
+}
+
+function buildTrollCaveChasePath(startX, startY, targetPlayerIndex) {
+  const target = players[targetPlayerIndex];
+  if (!target) return [];
+  const startKey = `${startX},${startY}`;
+  const targetKey = `${target.x},${target.y}`;
+  if (startKey === targetKey) return [];
+  const occupiedByOtherPlayers = new Set(players
+    .map((player, index) => ({ player, index }))
+    .filter(({ player, index }) =>
+      index !== targetPlayerIndex &&
+      (player?.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_TROLL_CAVE
+    )
+    .map(({ player }) => `${player.x},${player.y}`));
+  const pitKey = getTrollCaveCellKeyByNumber(TROLL_CAVE_PIT_CELL_NUMBER);
+  const queue = [startKey];
+  const previous = new Map([[startKey, null]]);
+  while (queue.length) {
+    const currentKey = queue.shift();
+    if (currentKey === targetKey) break;
+    const [currentX, currentY] = currentKey.split(",").map(Number);
+    for (const { dx, dy } of MOVES_DIRS) {
+      const x = currentX + dx;
+      const y = currentY + dy;
+      const key = `${x},${y}`;
+      if (previous.has(key) || isTrollCaveCellBlocked(x, y)) continue;
+      if (key === pitKey || (occupiedByOtherPlayers.has(key) && key !== targetKey)) continue;
+      previous.set(key, currentKey);
+      queue.push(key);
+    }
+  }
+  if (!previous.has(targetKey)) return [];
+  const reversed = [];
+  let cursor = targetKey;
+  while (cursor && cursor !== startKey) {
+    reversed.push(cursor);
+    cursor = previous.get(cursor);
+  }
+  return reversed.reverse();
+}
+
+function expelPlayerFromTrollCave(playerIndex) {
+  const player = players[playerIndex];
+  if (!player) return false;
+  const exitIndex = getNearestTrollCaveEntranceIndex(player.x, player.y);
+  const exteriorCave = TROLL_CAVES[exitIndex];
+  if (!exteriorCave) return false;
+  player.layer = WORLD_LAYER_UPPER;
+  player.underworldState = null;
+  player.trollCaveEntranceIndex = null;
+  player.x = exteriorCave.x;
+  player.y = exteriorCave.y;
+  player.stunnedTurnsRemaining = TROLL_STUN_DURATION;
+  player.stunSource = "troll";
+  updatePlayerResources(playerIndex);
+  showPrivatePickupToastForPlayer(
+    playerIndex,
+    `Тролль оглушил вас и выбросил через ближайший выход. Оглушение: ${TROLL_STUN_DURATION} общих ходов.`
+  );
+  return true;
+}
+
+function handleTrollInsideCaveTurn() {
+  if (!trollState?.active || typeof isTrollInCave !== "function" || !isTrollInCave()) return false;
+  const cavePlayers = players
+    .map((player, index) => ({ player, index }))
+    .filter(({ player }) => (player?.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_TROLL_CAVE);
+  if (!cavePlayers.length) return false;
+  if (!trollState.interiorKey) {
+    placeTrollInsideCave(trollState.currentCaveIndex);
+  }
+  const trollX = Number(trollState.interiorX);
+  const trollY = Number(trollState.interiorY);
+  if (!Number.isInteger(trollX) || !Number.isInteger(trollY)) return true;
+  cavePlayers.forEach(entry => {
+    entry.distance = Math.abs(entry.player.x - trollX) + Math.abs(entry.player.y - trollY);
+  });
+  cavePlayers.sort((a, b) => a.distance - b.distance || a.index - b.index);
+  const targetEntry = cavePlayers[0];
+
+  if (targetEntry.distance <= TROLL_CAVE_STUN_RANGE && Math.random() < TROLL_CAVE_STUN_CHANCE) {
+    expelPlayerFromTrollCave(targetEntry.index);
+    refreshVisibleWorld();
+    return true;
+  }
+
+  const path = buildTrollCaveChasePath(trollX, trollY, targetEntry.index);
+  // Последняя клетка занята игроком: тролль останавливается рядом, не накладываясь на пешку.
+  const maxSteps = Math.min(TROLL_SPEED, Math.max(0, path.length - 1));
+  if (maxSteps > 0) {
+    const destinationKey = path[maxSteps - 1];
+    const [x, y] = destinationKey.split(",").map(Number);
+    trollState.interiorX = x;
+    trollState.interiorY = y;
+    trollState.interiorKey = destinationKey;
+  }
+  refreshVisibleWorld();
+  return true;
+}
+
 function isUpperLevelPositionOccupied(x, y) {
-  return players.some(player => player.layer !== WORLD_LAYER_UNDER && player.x === x && player.y === y);
+  return players.some(player => (player.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_UPPER && player.x === x && player.y === y);
 }
 
 function getUpperWormholeEligibleKeys() {
@@ -3042,7 +3506,9 @@ function resetCellForVisibleRender(key) {
   cell.classList.remove(
     "resource", "important", "owned", "reachable", "barbarian", "special", "forest",
     "resource-disabled", "mercenary", "thief", "cutthroat", "messenger", "caravan", "werewolf", "mage", "portal", "wormhole",
-    "stairs", "flower", "clover", "stone", "rainbow-stone", "void-shard", "master", "troll", "troll-cave", "treasure"
+    "stairs", "flower", "clover", "stone", "rainbow-stone", "void-shard", "master", "troll", "troll-cave", "tavern", "tavern-node", "treasure",
+    "troll-cave-numbered", "troll-cave-entrance", "troll-cave-pit", "troll-cave-loot", "troll-cave-troll",
+    "world-cell-hidden"
   );
   cell.classList.add("inactive");
   cell.textContent = "";
@@ -3234,7 +3700,6 @@ function renderUpperWorldView() {
     cell.textContent = "";
     setCellIcon(cell, STAIRS_ICON.file, STAIRS_ICON.alt);
   });
-  applyFogOfWarMask();
 }
 
 function renderUnderworldView(playerIndex) {
@@ -3265,6 +3730,74 @@ function renderUnderworldView(playerIndex) {
   }
 }
 
+function renderTrollCaveView() {
+  Object.entries(grid).forEach(([key, cell]) => {
+    const [x, y] = key.split(",").map(Number);
+    resetCellForVisibleRender(key);
+    if (!isInsideTrollCaveBounds(x, y)) {
+      cell.classList.add("world-cell-hidden");
+      return;
+    }
+    cell.classList.remove("inactive");
+    cell.classList.add("troll-cave-numbered");
+    cell.classList.toggle("blocked", TROLL_CAVE_BLOCKED_KEYS.has(key));
+    cell.removeAttribute("title");
+  });
+
+  TROLL_CAVE_ENTRANCE_CELL_NUMBERS.forEach((numbers, caveIndex) => {
+    numbers.forEach(number => {
+      const key = getTrollCaveCellKeyByNumber(number);
+      const cell = grid[key];
+      if (!cell) return;
+      cell.classList.remove("blocked");
+      cell.classList.add("important", "special", "troll-cave-entrance");
+      cell.title = `Клетка №${number} · вход ${caveIndex + 1}`;
+    });
+  });
+
+  const pitKey = getTrollCaveCellKeyByNumber(TROLL_CAVE_PIT_CELL_NUMBER);
+  const pitCell = grid[pitKey];
+  if (pitCell) {
+    pitCell.classList.remove("blocked");
+    pitCell.classList.add("important", "special", "troll-cave-pit");
+    setCellIcon(pitCell, "wormhole.png", "Яма в нижний мир");
+    pitCell.title = `Клетка №${TROLL_CAVE_PIT_CELL_NUMBER} · яма в нижний мир`;
+  }
+
+  Object.values(trollCaveInteriorState?.lootByPos || {}).forEach(entry => {
+    const cell = grid[entry.key];
+    const definition = TROLL_CAVE_LOOT_DEFS[entry.typeKey];
+    if (!cell || !definition) return;
+    const isResource = TROLL_CAVE_RESOURCE_LOOT_TYPES.has(entry.typeKey);
+    cell.classList.add("important", "troll-cave-loot");
+    if (isResource) cell.classList.add("resource");
+    if (entry.typeKey === "rainbow") cell.classList.add("rainbow-stone");
+    if (entry.typeKey === "flower") cell.classList.add("flower");
+    const icon = setCellIcon(cell, definition.icon, definition.label);
+    if (isResource && icon) icon.classList.add("resource-icon");
+    if (isResource) {
+      const amountLabel = document.createElement("span");
+      amountLabel.className = "troll-cave-loot-amount";
+      amountLabel.textContent = `+${getTrollCaveLootEffectiveAmount(entry)}`;
+      cell.appendChild(amountLabel);
+    }
+    cell.removeAttribute("title");
+  });
+
+  if (trollState?.active && typeof isTrollInCave === "function" && isTrollInCave() && trollState.interiorKey) {
+    const trollCell = grid[trollState.interiorKey];
+    if (trollCell) {
+      trollCell.classList.add("important", "troll-cave-troll");
+      const token = document.createElement("img");
+      token.className = "troll-token troll-cave-token";
+      token.src = "assets/icons/troll.png";
+      token.alt = "Тролль";
+      trollCell.appendChild(token);
+      trollCell.title = `Тролль · клетка ${getTrollCaveCellNumber(trollState.interiorX, trollState.interiorY)}`;
+    }
+  }
+}
+
 function clearRenderedWormholes() {
   Object.values(grid).forEach(cell => {
     if (!cell || !cell.classList.contains("wormhole")) return;
@@ -3281,16 +3814,30 @@ function refreshVisibleWorld() {
   clearRenderedWormholes();
   const viewerIndex = getViewerWorldPlayerIndex();
   const visibleLayer = getVisibleWorldLayer();
+  const layerChanged = lastVisibleWorldLayoutLayer !== visibleLayer;
+  lastVisibleWorldLayoutLayer = visibleLayer;
+  game.classList.toggle("troll-cave-world", visibleLayer === WORLD_LAYER_TROLL_CAVE);
+  if (layerChanged && typeof relayout === "function") {
+    relayout();
+  } else {
+    applyCellSize(cellSize);
+  }
   if (visibleLayer === WORLD_LAYER_UNDER && players[viewerIndex]?.layer === WORLD_LAYER_UNDER) {
     game.style.backgroundImage = UNDERWORLD_BG;
     renderUnderworldView(viewerIndex);
+  } else if (visibleLayer === WORLD_LAYER_TROLL_CAVE) {
+    game.style.backgroundImage = TROLL_CAVE_INTERIOR_BG;
+    renderTrollCaveView();
   } else {
     game.style.backgroundImage = getUpperWorldBackground();
     renderUpperWorldView();
   }
+  applyFogOfWarMask();
   clearReachable();
   if (ballistaModePlayerIndex === currentPlayerIndex) {
     showBallistaRange(ballistaModePlayerIndex);
+  } else if (harpoonModePlayerIndex === currentPlayerIndex) {
+    showHarpoonTargets(harpoonModePlayerIndex);
   } else if (voidShardModePlayerIndex === currentPlayerIndex) {
     showVoidShardTargets(voidShardModePlayerIndex);
   } else if (movesRemaining > 0) {
@@ -3299,10 +3846,12 @@ function refreshVisibleWorld() {
   updatePawns();
 }
 
-function enterUnderworld(playerIndex) {
+function enterUnderworld(playerIndex, options = {}) {
   const player = players[playerIndex];
   if (!player) return false;
-  upperWormhole = null;
+  if (options.consumeUpperWormhole !== false) {
+    upperWormhole = null;
+  }
   player.layer = WORLD_LAYER_UNDER;
   player.underworldState = createUnderworldStateForPlayer(playerIndex);
   refreshVisibleWorld();
@@ -3310,6 +3859,7 @@ function enterUnderworld(playerIndex) {
     emitStateNow(true);
   }
   if (
+    options.consumeUpperWormhole !== false &&
     typeof socket !== "undefined" &&
     socket &&
     typeof onlineMatchStarted !== "undefined" &&
@@ -3323,7 +3873,10 @@ function enterUnderworld(playerIndex) {
       emitPrivateUiToPlayer(index, "clearWormholeVisual", {});
     });
   }
-  showPrivatePickupToastForPlayer(playerIndex, "Червоточина утащила вас на нижний уровень.");
+  showPrivatePickupToastForPlayer(
+    playerIndex,
+    options.sourceLabel || "Червоточина утащила вас на нижний уровень."
+  );
   return true;
 }
 
@@ -3345,7 +3898,10 @@ function applyPotion(playerIndex, type) {
   if (!player) return;
   if (type === "ballista") {
     if (playerIndex !== currentPlayerIndex) return;
+    if (ballistaShotInFlight) return;
     if ((player.ballistaCount || 0) <= 0) return;
+    const allowedShots = getPlayerBallistaLevel(player) >= 2 ? 2 : 1;
+    if ((player.ballistaShotsThisTurn || 0) >= allowedShots) return;
     if ((player.boltCount || 0) <= 0) {
       showPrivatePickupToastForPlayer(playerIndex, "Нет болтов для баллисты.");
       return;
@@ -3357,6 +3913,31 @@ function applyPotion(playerIndex, type) {
       showBallistaRange(playerIndex);
     }
     showPrivatePickupToastForPlayer(playerIndex, "Режим баллисты активирован. Выберите цель.");
+    updateInventory(playerIndex);
+    return;
+  }
+  if (type === "harpoon") {
+    if (playerIndex !== currentPlayerIndex || harpoonAnimationInFlight) return;
+    if ((player.harpoonCount || 0) <= 0) return;
+    if (movesRemaining <= 0) {
+      showPrivatePickupToastForPlayer(playerIndex, "Сначала бросьте кубики: горпун применяется во время перемещения.");
+      return;
+    }
+    if ((player.layer || WORLD_LAYER_UPPER) !== WORLD_LAYER_UPPER) {
+      showPrivatePickupToastForPlayer(playerIndex, "Горпун можно использовать только в верхнем мире.");
+      return;
+    }
+    if (getHarpoonTargetKeys(playerIndex).length === 0) {
+      showPrivatePickupToastForPlayer(playerIndex, "В радиусе 12 клеток нет доступной добычи для горпуна.");
+      return;
+    }
+    harpoonModePlayerIndex = playerIndex;
+    if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
+      emitPrivateUiToPlayer(playerIndex, "activateHarpoonMode", { playerIndex });
+    } else {
+      showHarpoonTargets(playerIndex);
+    }
+    showPrivatePickupToastForPlayer(playerIndex, "Горпун готов. Выберите подсвеченную добычу в радиусе 12 клеток.");
     updateInventory(playerIndex);
     return;
   }
@@ -3770,6 +4351,7 @@ function cancelBallistaMode(playerIndex) {
 }
 
 function tryBallistaShot(gridX, gridY) {
+  if (ballistaShotInFlight) return true;
   if (ballistaModePlayerIndex === null) return false;
   if (ballistaModePlayerIndex !== currentPlayerIndex) return false;
   const attacker = players[ballistaModePlayerIndex];
@@ -3792,7 +4374,16 @@ function tryBallistaShot(gridX, gridY) {
     return true;
   }
   const target = players[targetIndex];
+  if ((target.invulnTurnsRemaining || 0) > 0) {
+    showPrivatePickupToastForPlayer(ballistaModePlayerIndex, "На игрока действует неприкосновенность — выстрел невозможен.");
+    return true;
+  }
+  if (isTavernSafeCell(`${target.x},${target.y}`, target.layer || WORLD_LAYER_UPPER)) {
+    showPrivatePickupToastForPlayer(ballistaModePlayerIndex, "Таверна — безопасная зона. Стрелять по игрокам внутри нельзя.");
+    return true;
+  }
   const shooterIndex = ballistaModePlayerIndex;
+  const ballistaLevel = getPlayerBallistaLevel(attacker);
   const damage = Math.floor(Math.random() * (BALLISTA_DAMAGE_MAX - BALLISTA_DAMAGE_MIN + 1)) + BALLISTA_DAMAGE_MIN;
   const beforeArmy = Math.max(0, target.pocket.army || 0);
   const killed = Math.min(beforeArmy, damage);
@@ -3819,15 +4410,29 @@ function tryBallistaShot(gridX, gridY) {
     }
   }
 
+  ballistaShotInFlight = true;
   animateBallistaBolt(fromCX, fromCY, toCX, toCY, () => {
+    ballistaShotInFlight = false;
     target.pocket.army = beforeArmy - killed;
     attacker.boltCount -= 1;
+    attacker.ballistaShotsThisTurn = Math.max(0, Number(attacker.ballistaShotsThisTurn) || 0) + 1;
+    const keepsTurn = ballistaLevel >= 2 && attacker.ballistaShotsThisTurn < 2;
     updatePlayerResources(shooterIndex);
     updatePlayerResources(targetIndex);
     updateInventory(shooterIndex);
-    showPrivatePickupToastForPlayer(shooterIndex, `Баллиста: -${killed} войск в кармане противника.`);
+    showPrivatePickupToastForPlayer(
+      shooterIndex,
+      keepsTurn
+        ? `Баллиста II: -${killed} войск. Ход сохранён: переместитесь или выстрелите ещё раз.`
+        : `${ballistaLevel >= 2 ? "Баллиста II" : "Баллиста"}: -${killed} войск в кармане противника.`
+    );
     showDamageToast(`-${killed}`);
-    endTurn();
+    if (keepsTurn) {
+      refreshTurnControls();
+      if (typeof emitStateNow === "function") emitStateNow(true);
+    } else {
+      endTurn();
+    }
   });
 
   return true;
@@ -3867,6 +4472,263 @@ function animateBallistaBolt(fromX, fromY, toX, toY, onComplete) {
   setTimeout(finish, 500);
 }
 
+function getHarpoonTargetAtKey(key) {
+  const resourceNode = resourceByPos[key];
+  const resourceTypeKey = resourceNode?.type?.key || resourceNode?.typeKey;
+  if (resourceNode && ["gold", "army", "resources"].includes(resourceTypeKey)) {
+    const iconDef = RESOURCE_ICONS[resourceTypeKey];
+    return {
+      key,
+      kind: "resource",
+      iconSrc: `assets/icons/${iconDef?.file || "resources.png"}`
+    };
+  }
+  if (flowerArtifact?.key === key) {
+    return { key, kind: "flower", iconSrc: "assets/icons/mystic_flower.png" };
+  }
+  if (cloverArtifact?.key === key) {
+    return { key, kind: "clover", iconSrc: "assets/icons/clover.png" };
+  }
+  if (rainbowByPos[key]) {
+    return { key, kind: "rainbow", iconSrc: "assets/icons/rainbow_stone.png" };
+  }
+  if (stoneByPos[key]) {
+    return { key, kind: "stone", iconSrc: "assets/icons/stone.png" };
+  }
+  return null;
+}
+
+function isHarpoonTargetInRange(playerIndex, key) {
+  const player = players[playerIndex];
+  if (!player || (player.layer || WORLD_LAYER_UPPER) !== WORLD_LAYER_UPPER) return false;
+  const [x, y] = String(key).split(",").map(Number);
+  if (!Number.isInteger(x) || !Number.isInteger(y)) return false;
+  const distance = Math.abs(player.x - x) + Math.abs(player.y - y);
+  if (distance === 0 || distance > HARPOON_RANGE) return false;
+  if (typeof isUpperWorldKeyVisibleToPlayer === "function" && !isUpperWorldKeyVisibleToPlayer(key, playerIndex)) {
+    return false;
+  }
+  return Boolean(getHarpoonTargetAtKey(key));
+}
+
+function getHarpoonTargetKeys(playerIndex) {
+  return Object.keys(grid).filter(key => isHarpoonTargetInRange(playerIndex, key));
+}
+
+function showHarpoonTargets(playerIndex = currentPlayerIndex) {
+  clearReachable();
+  if (harpoonModePlayerIndex !== playerIndex) return;
+  getHarpoonTargetKeys(playerIndex).forEach(key => {
+    const cell = grid[key];
+    if (!cell) return;
+    cell.classList.add("reachable", "harpoon-target");
+    reachableKeys.add(key);
+  });
+}
+
+function cancelHarpoonMode(playerIndex) {
+  if (harpoonModePlayerIndex !== playerIndex || harpoonAnimationInFlight) return;
+  harpoonModePlayerIndex = null;
+  if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
+    emitPrivateUiToPlayer(playerIndex, "clearHarpoonMode", { playerIndex });
+  } else {
+    clearReachable();
+    showReachable();
+  }
+  updateInventory(playerIndex);
+  showPrivatePickupToastForPlayer(playerIndex, "Режим горпуна отменён.");
+}
+
+function collectHarpoonTarget(playerIndex, target) {
+  const player = players[playerIndex];
+  if (!player || !target || !getHarpoonTargetAtKey(target.key)) {
+    showPrivatePickupToastForPlayer(playerIndex, "Добыча для горпуна уже исчезла.");
+    return false;
+  }
+  const key = target.key;
+  let message = "";
+
+  if (target.kind === "resource") {
+    const resourceNode = resourceByPos[key];
+    if (!resourceNode) return false;
+    const { type, x, y } = resourceNode;
+    if (isDayBuffActive("pickupFail") && Math.random() < 0.3) {
+      delete resourceByPos[key];
+      setCellToInactive(x, y);
+      message = "Выскользнуло из рук";
+    } else {
+      let pickupMinimum = type.min;
+      let pickupMaximum = type.max;
+      if (type.key === "army") {
+        if (turnCounter >= 225) {
+          [pickupMinimum, pickupMaximum] = ARMY_RESOURCE_LATE_GAME_RANGE;
+        } else if (turnCounter >= 150) {
+          [pickupMinimum, pickupMaximum] = ARMY_RESOURCE_MID_GAME_RANGE;
+        }
+      }
+      let amount = Math.floor(Math.random() * (pickupMaximum - pickupMinimum + 1)) + pickupMinimum;
+      if (type.key !== "army") {
+        if (turnCounter >= 225) {
+          amount = Math.floor(amount * 2.5);
+        } else if (turnCounter >= 150) {
+          amount = Math.floor(amount * 1.75);
+        }
+      }
+      if (player.luckTurnsRemaining > 0) {
+        amount = Math.floor(amount * 1.6);
+      } else if ((player.luckAmuletCount || 0) > 0 && Math.random() < 0.25) {
+        amount = Math.floor(amount * 1.7);
+      }
+      player.pocket[type.key] += amount;
+      delete resourceByPos[key];
+      setCellToInactive(x, y);
+      const label = type.key === "gold" ? "золота" : type.key === "army" ? "войск" : "ресурсов";
+      message = `Горпун: +${amount} ${label} в карман`;
+    }
+  } else if (target.kind === "flower") {
+    if (!tryAddSpecialArtifactToInventory(player, "flower")) {
+      showPrivatePickupToastForPlayer(playerIndex, "Нет свободного слота для таинственного цветка.");
+      return false;
+    }
+    clearFlower();
+    message = "Горпун притянул таинственный цветок в инвентарь.";
+  } else if (target.kind === "clover") {
+    player.cloverCount = (player.cloverCount || 0) + 1;
+    clearClover();
+    message = "Горпун притянул клевер в инвентарь.";
+  } else if (target.kind === "rainbow") {
+    if (!tryAddSpecialArtifactToInventory(player, "rainbow")) {
+      showPrivatePickupToastForPlayer(playerIndex, "Нет свободного слота для радужного камня.");
+      return false;
+    }
+    clearRainbowStone(key);
+    message = "Горпун притянул радужный камень в инвентарь.";
+  } else if (target.kind === "stone") {
+    player.mysticStoneCount = (player.mysticStoneCount || 0) + 1;
+    clearStone(key);
+    message = "Горпун притянул необычный камень в инвентарь.";
+  } else {
+    return false;
+  }
+
+  updatePlayerResources(playerIndex);
+  updateInventory(playerIndex);
+  showPrivatePickupToastForPlayer(playerIndex, message);
+  return true;
+}
+
+function animateHarpoonPickup(fromX, fromY, toX, toY, iconSrc, onComplete) {
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  const distance = Math.hypot(dx, dy);
+  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+  const rope = document.createElement("div");
+  const hook = document.createElement("img");
+  const loot = document.createElement("img");
+  rope.className = "harpoon-rope";
+  hook.className = "harpoon-projectile";
+  loot.className = "harpoon-pulled-loot";
+  hook.src = "assets/icons/harpoon.png";
+  loot.src = iconSrc || "assets/icons/resources.png";
+  rope.style.left = `${fromX}px`;
+  rope.style.top = `${fromY}px`;
+  rope.style.width = `${distance}px`;
+  rope.style.transform = `translateY(-50%) rotate(${angle}deg) scaleX(0)`;
+  hook.style.left = `${fromX}px`;
+  hook.style.top = `${fromY}px`;
+  hook.style.transform = `translate(-50%, -50%) rotate(${angle + 45}deg)`;
+  loot.style.left = `${toX}px`;
+  loot.style.top = `${toY}px`;
+  loot.style.opacity = "0";
+  game.append(rope, hook, loot);
+
+  const targetKey = `${Math.floor(toX / cellSize)},${Math.floor(toY / cellSize)}`;
+  const targetCell = grid[targetKey];
+  const originalIcon = targetCell?.querySelector(".icon");
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    if (originalIcon) originalIcon.style.visibility = "";
+    if (targetCell) targetCell.classList.remove("harpoon-being-pulled");
+    rope.remove();
+    hook.remove();
+    loot.remove();
+    if (onComplete) onComplete();
+  };
+
+  requestAnimationFrame(() => {
+    rope.style.transform = `translateY(-50%) rotate(${angle}deg) scaleX(1)`;
+    hook.style.left = `${toX}px`;
+    hook.style.top = `${toY}px`;
+  });
+
+  setTimeout(() => {
+    if (targetCell) targetCell.classList.add("harpoon-being-pulled");
+    if (originalIcon) originalIcon.style.visibility = "hidden";
+    hook.style.opacity = "0";
+    rope.classList.add("retracting");
+    rope.style.transform = `translateY(-50%) rotate(${angle}deg) scaleX(0)`;
+    loot.style.opacity = "1";
+    loot.style.left = `${fromX}px`;
+    loot.style.top = `${fromY}px`;
+  }, 380);
+
+  setTimeout(finish, 880);
+}
+
+function tryUseHarpoonAtCell(playerIndex, gridX, gridY) {
+  if (harpoonAnimationInFlight) return true;
+  if (harpoonModePlayerIndex !== playerIndex || playerIndex !== currentPlayerIndex) return false;
+  const player = players[playerIndex];
+  const key = `${gridX},${gridY}`;
+  const target = getHarpoonTargetAtKey(key);
+  if (!player || (player.harpoonCount || 0) <= 0) {
+    cancelHarpoonMode(playerIndex);
+    return true;
+  }
+  if (!target || !isHarpoonTargetInRange(playerIndex, key)) {
+    showPrivatePickupToastForPlayer(playerIndex, "Выберите подсвеченную добычу не дальше 12 клеток.");
+    return true;
+  }
+  if ((target.kind === "flower" || target.kind === "rainbow") && !hasFreeSpecialArtifactSlot(player)) {
+    showPrivatePickupToastForPlayer(playerIndex, "Для этой добычи нет свободного слота редких артефактов.");
+    return true;
+  }
+
+  player.harpoonCount -= 1;
+  harpoonModePlayerIndex = null;
+  harpoonAnimationInFlight = true;
+  clearReachable();
+  updateInventory(playerIndex);
+  refreshTurnControls();
+  if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
+    emitPrivateUiToPlayer(playerIndex, "clearHarpoonMode", { playerIndex });
+  }
+
+  const fromX = player.x * cellSize + cellSize / 2;
+  const fromY = player.y * cellSize + cellSize / 2;
+  const toX = gridX * cellSize + cellSize / 2;
+  const toY = gridY * cellSize + cellSize / 2;
+  if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
+    emitPrivateUiToPlayer(playerIndex, "animateHarpoonPickup", {
+      fromGridX: player.x,
+      fromGridY: player.y,
+      toGridX: gridX,
+      toGridY: gridY,
+      iconSrc: target.iconSrc
+    });
+  }
+  animateHarpoonPickup(fromX, fromY, toX, toY, target.iconSrc, () => {
+    harpoonAnimationInFlight = false;
+    collectHarpoonTarget(playerIndex, target);
+    showReachable();
+    refreshTurnControls();
+    if (typeof emitStateNow === "function") emitStateNow(true);
+  });
+  return true;
+}
+
 const ENEMY_POCKET_VISIBILITY_RANGE = 5;
 const ENEMY_CASTLE_VISIBILITY_RANGE = 6;
 const HIDDEN_STAT_VALUE = "???";
@@ -3888,9 +4750,21 @@ function getManhattanDistance(ax, ay, bx, by) {
   return Math.abs(ax - bx) + Math.abs(ay - by);
 }
 
+function isPlayerBattleValueRevealed(playerIndex) {
+  if (!playerBattleRevealState || !Number.isInteger(playerIndex)) return false;
+  const viewerIndex = getViewerPlayerIndex();
+  if (viewerIndex === null) return true;
+  const participants = [
+    playerBattleRevealState.attackerIndex,
+    playerBattleRevealState.defenderIndex
+  ];
+  return participants.includes(viewerIndex) && participants.includes(playerIndex);
+}
+
 function canSeeEnemyPocket(playerIndex) {
   const viewerIndex = getViewerPlayerIndex();
   if (viewerIndex === null || viewerIndex === playerIndex) return true;
+  if (isPlayerBattleValueRevealed(playerIndex)) return true;
   const viewer = players[viewerIndex];
   const target = players[playerIndex];
   if (!viewer || !target) return false;
@@ -3901,6 +4775,7 @@ function canSeeEnemyPocket(playerIndex) {
 function canSeeEnemyCastleResources(playerIndex) {
   const viewerIndex = getViewerPlayerIndex();
   if (viewerIndex === null || viewerIndex === playerIndex) return true;
+  if (isPlayerBattleValueRevealed(playerIndex)) return true;
   const viewer = players[viewerIndex];
   if ((viewer.layer || WORLD_LAYER_UPPER) !== WORLD_LAYER_UPPER) return false;
   if ((players[playerIndex]?.layer || WORLD_LAYER_UPPER) !== WORLD_LAYER_UPPER) return false;
@@ -4019,14 +4894,17 @@ function updateInventory(playerIndex) {
     const count = item.count ? item.count(player) : 0;
     const alwaysShow = item.alwaysShow ? item.alwaysShow(player) : false;
     if (!count && !alwaysShow) return;
+    const itemLabel = item.key === "ballista" && getPlayerBallistaLevel(player) >= 2
+      ? "Баллиста II"
+      : item.label;
     const entry = document.createElement("div");
     entry.className = "inventory-item";
     const icon = document.createElement("img");
     icon.className = "inventory-icon";
     icon.src = `assets/icons/${item.icon}`;
-    icon.alt = item.label;
+    icon.alt = itemLabel;
     const label = document.createElement("span");
-    label.textContent = count > 1 ? `${item.label} ×${count}` : item.label;
+    label.textContent = count > 1 ? `${itemLabel} ×${count}` : itemLabel;
     entry.appendChild(icon);
     entry.appendChild(label);
     if (item.useAction && canUseInventoryItems) {
@@ -4046,6 +4924,19 @@ function updateInventory(playerIndex) {
           }
           cancelBallistaMode(playerIndex);
         });
+    } else if (item.useAction === "harpoon" && harpoonModePlayerIndex === playerIndex) {
+      btn.textContent = "Отменить";
+      btn.addEventListener("click", () => {
+        if (shouldRoutePrivateUiActionToHost(playerIndex)) {
+          emitPrivateUiActionToHost({
+            modalType: "inventory",
+            actionType: "cancelHarpoon",
+            playerIndex
+          });
+          return;
+        }
+        cancelHarpoonMode(playerIndex);
+      });
     } else if (item.useAction === "bridge" && bridgeModePlayerIndex === playerIndex) {
       btn.textContent = "Отменить";
       btn.addEventListener("click", () => {
@@ -4123,6 +5014,9 @@ function updatePlayerResources(playerIndex) {
     if ((player.slowTurnsRemaining || 0) > 0) parts.push(`Замедление ${player.slowTurnsRemaining}`);
     if ((player.noDoubleTurnsRemaining || 0) > 0) parts.push(`Без дубля ${player.noDoubleTurnsRemaining}`);
     if ((player.stunnedTurnsRemaining || 0) > 0) parts.push(`Оглушение ${player.stunnedTurnsRemaining}`);
+    if ((player.beerSlowTurnsRemaining || 0) > 0) {
+      parts.push(`Пивное замедление -${TAVERN_BEER_SLOW_PENALTY} (${player.beerSlowTurnsRemaining})`);
+    }
     const kingConcernState = getKingConcernState();
     if (
       isWorldEventActive(WORLD_EVENTS.kingConcern.key) &&
@@ -4140,7 +5034,10 @@ function updatePlayerResources(playerIndex) {
     if ((player.royalBlessingTurnsRemaining || 0) > 0) parts.push(`Благославление ${player.royalBlessingTurnsRemaining}`);
     if ((player.invisTurnsRemaining || 0) > 0) parts.push(`Невидимость ${player.invisTurnsRemaining}`);
     if ((player.luckTurnsRemaining || 0) > 0) parts.push(`Удача ${player.luckTurnsRemaining}`);
-    if ((player.invulnTurnsRemaining || 0) > 0) parts.push(`Неприкосновенность ${player.invulnTurnsRemaining}`);
+    const beerProtectionTurns = Math.max(0, player.beerProtectionTurnsRemaining || 0);
+    const invulnTurns = Math.max(0, player.invulnTurnsRemaining || 0);
+    if (beerProtectionTurns > 0) parts.push(`Пиво: неприкосновенность ${beerProtectionTurns}`);
+    if (invulnTurns > beerProtectionTurns) parts.push(`Неприкосновенность ${invulnTurns}`);
     if ((player.stoneBonusRollsRemaining || 0) > 0) parts.push(`Ходы подряд ${player.stoneBonusRollsRemaining}`);
     if ((player.stoneSpeedTurnsRemaining || 0) > 0) parts.push(`Скорость ${player.stoneSpeedTurnsRemaining}`);
     positiveSpan.textContent = parts.length ? parts.join(", ") : "нет";
@@ -4978,8 +5875,7 @@ function getTimeOfDayInfoHtml() {
     },
     evening: [
       "Тролли имеют 20 войск (вместо 25).",
-      "Добыча в пещере троллей x2 (золото и ресурсы).",
-      "Шанс найти радужный камень, цветок и жетон увеличен в 2 раза.",
+      "Золото, ресурсы и войска в пещере при подборе увеличиваются в 1,25 раза.",
       "Скидка 13% в лавке, мастерской и казарме (не суммируется с другими скидками)."
     ],
     night: [
@@ -4990,7 +5886,7 @@ function getTimeOfDayInfoHtml() {
     morning: [
       "Ресурсы, золото и войска появляются в 2 раза больше.",
       "Дополнительные +3 к броску кубиков.",
-      "Пещеры троллей пустые (троллей всё ещё можно победить).",
+      "В начале утра из пещеры исчезают золото, ресурсы и войска; Радужные камни и Таинственные цветки остаются.",
       "Варвары слабее на 30%."
     ]
   };
@@ -5188,6 +6084,476 @@ if (masterModal) {
     }
   });
 }
+
+let pendingTavernPlayerIndex = null;
+let tavernWheelSelectedColor = null;
+let tavernWheelRound = null;
+let tavernWheelResolveTimer = null;
+let tavernWheelVisualInProgress = false;
+let tavernDragonRound = null;
+let tavernDragonResolveTimer = null;
+let tavernDragonVisualFrame = null;
+let tavernDragonVisualStartedAt = 0;
+let tavernDragonVisualInProgress = false;
+let tavernGameSequenceId = 0;
+
+function isTavernSafeCell(key, layer = WORLD_LAYER_UPPER) {
+  return layer === WORLD_LAYER_UPPER && key === TAVERN_CELL_KEY;
+}
+
+function isPlayerAtTavern(playerIndex) {
+  const player = players[playerIndex];
+  return Boolean(player) &&
+    (player.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_UPPER &&
+    `${player.x},${player.y}` === TAVERN_CELL_KEY;
+}
+
+function getTavernRandomUnit() {
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const values = new Uint32Array(1);
+    crypto.getRandomValues(values);
+    return values[0] / 4294967296;
+  }
+  return Math.random();
+}
+
+function normalizeTavernBet(rawValue) {
+  const value = Math.floor(Number(rawValue));
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+function syncTavernModalState(playerIndex = pendingTavernPlayerIndex) {
+  const player = players[playerIndex];
+  if (!player) return;
+  const totalGold = getTotalGold(player);
+  if (tavernGoldValue) tavernGoldValue.textContent = String(totalGold);
+  if (tavernDrinkBeerBtn) tavernDrinkBeerBtn.disabled = totalGold < TAVERN_BEER_COST;
+  if (tavernWheelBtn) {
+    tavernWheelBtn.disabled = (player.tavernWheelPlaysThisTurn || 0) >= TAVERN_WHEEL_MAX_PLAYS_PER_TURN;
+  }
+  if (tavernDragonBtn) {
+    tavernDragonBtn.disabled = (player.tavernDragonPlaysThisTurn || 0) >= TAVERN_DRAGON_MAX_PLAYS_PER_TURN;
+  }
+}
+
+function syncTavernWheelModalState(playerIndex = pendingTavernPlayerIndex) {
+  const player = players[playerIndex];
+  if (!player) return;
+  const totalGold = getTotalGold(player);
+  const plays = Math.max(0, player.tavernWheelPlaysThisTurn || 0);
+  if (tavernWheelGoldValue) tavernWheelGoldValue.textContent = String(totalGold);
+  if (tavernWheelPlaysValue) tavernWheelPlaysValue.textContent = `${plays} / ${TAVERN_WHEEL_MAX_PLAYS_PER_TURN}`;
+  const bet = normalizeTavernBet(tavernWheelBetInput?.value);
+  if (tavernWheelSpinBtn) {
+    tavernWheelSpinBtn.disabled = tavernWheelVisualInProgress ||
+      Boolean(tavernWheelRound) ||
+      plays >= TAVERN_WHEEL_MAX_PLAYS_PER_TURN ||
+      !tavernWheelSelectedColor ||
+      bet <= 0 ||
+      bet > totalGold;
+  }
+  tavernWheelColorButtons.forEach(button => {
+    button.disabled = tavernWheelVisualInProgress || Boolean(tavernWheelRound);
+    button.classList.toggle("is-selected", button.dataset.tavernWheelColor === tavernWheelSelectedColor);
+  });
+  if (tavernWheelBetInput) tavernWheelBetInput.disabled = tavernWheelVisualInProgress || Boolean(tavernWheelRound);
+  if (tavernWheelBackBtn) tavernWheelBackBtn.disabled = tavernWheelVisualInProgress || Boolean(tavernWheelRound);
+}
+
+function syncTavernDragonModalState(playerIndex = pendingTavernPlayerIndex) {
+  const player = players[playerIndex];
+  if (!player) return;
+  const totalGold = getTotalGold(player);
+  const plays = Math.max(0, player.tavernDragonPlaysThisTurn || 0);
+  const bet = normalizeTavernBet(tavernDragonBetInput?.value);
+  const roundActive = tavernDragonVisualInProgress || Boolean(tavernDragonRound);
+  if (tavernDragonGoldValue) tavernDragonGoldValue.textContent = String(totalGold);
+  if (tavernDragonPlaysValue) tavernDragonPlaysValue.textContent = `${plays} / ${TAVERN_DRAGON_MAX_PLAYS_PER_TURN}`;
+  if (tavernDragonBetInput) tavernDragonBetInput.disabled = roundActive;
+  if (tavernDragonStartBtn) {
+    tavernDragonStartBtn.disabled = roundActive ||
+      plays >= TAVERN_DRAGON_MAX_PLAYS_PER_TURN ||
+      bet <= 0 ||
+      bet > totalGold;
+  }
+  if (tavernDragonCashoutBtn) tavernDragonCashoutBtn.disabled = !roundActive;
+  if (tavernDragonBackBtn) tavernDragonBackBtn.disabled = roundActive;
+}
+
+function openTavernModal(playerIndex) {
+  if (!tavernModal || !isPlayerAtTavern(playerIndex)) return;
+  pendingTavernPlayerIndex = playerIndex;
+  prepareBlockingModalTurn(playerIndex);
+  if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
+    emitPrivateUiToPlayer(playerIndex, "showTavernModal", { playerIndex });
+    return;
+  }
+  if (tavernStatus) tavernStatus.textContent = "";
+  syncTavernModalState(playerIndex);
+  tavernWheelModal.style.display = "none";
+  tavernDragonModal.style.display = "none";
+  tavernModal.style.display = "flex";
+}
+
+function closeTavernModal() {
+  if (tavernWheelVisualInProgress || tavernDragonVisualInProgress || tavernWheelRound || tavernDragonRound) return;
+  if (tavernModal) tavernModal.style.display = "none";
+  if (tavernWheelModal) tavernWheelModal.style.display = "none";
+  if (tavernDragonModal) tavernDragonModal.style.display = "none";
+  pendingTavernPlayerIndex = null;
+  resumeTurnFlowAfterModalChange();
+}
+
+function openTavernWheelModal() {
+  if (pendingTavernPlayerIndex === null || !isPlayerAtTavern(pendingTavernPlayerIndex)) return;
+  tavernWheelSelectedColor = null;
+  if (tavernWheelBetInput) tavernWheelBetInput.value = "";
+  if (tavernWheelStatus) tavernWheelStatus.textContent = "Выберите цвет и укажите ставку.";
+  if (tavernModal) tavernModal.style.display = "none";
+  if (tavernWheelModal) tavernWheelModal.style.display = "flex";
+  syncTavernWheelModalState();
+}
+
+function returnFromTavernWheel() {
+  if (tavernWheelVisualInProgress || tavernWheelRound) return;
+  if (tavernWheelModal) tavernWheelModal.style.display = "none";
+  if (tavernModal) tavernModal.style.display = "flex";
+  syncTavernModalState();
+}
+
+function openTavernDragonModal() {
+  if (pendingTavernPlayerIndex === null || !isPlayerAtTavern(pendingTavernPlayerIndex)) return;
+  if (tavernDragonBetInput) tavernDragonBetInput.value = "";
+  if (tavernDragonStatus) tavernDragonStatus.textContent = "Сделайте ставку и следите за коэффициентом.";
+  if (dragonCrashMultiplier) dragonCrashMultiplier.textContent = "1.00×";
+  if (dragonCrashStage) dragonCrashStage.classList.remove("is-running", "is-crashed", "is-cashed-out");
+  if (tavernModal) tavernModal.style.display = "none";
+  if (tavernDragonModal) tavernDragonModal.style.display = "flex";
+  syncTavernDragonModalState();
+}
+
+function returnFromTavernDragon() {
+  if (tavernDragonVisualInProgress || tavernDragonRound) return;
+  if (tavernDragonModal) tavernDragonModal.style.display = "none";
+  if (tavernModal) tavernModal.style.display = "flex";
+  syncTavernModalState();
+}
+
+function drinkTavernBeer(playerIndex = pendingTavernPlayerIndex) {
+  const player = players[playerIndex];
+  if (!player || playerIndex !== currentPlayerIndex || !isPlayerAtTavern(playerIndex)) return false;
+  if (getTotalGold(player) < TAVERN_BEER_COST) return false;
+  spendGold(player, TAVERN_BEER_COST);
+  player.beerProtectionTurnsRemaining = TAVERN_BEER_PROTECTION_TURNS;
+  player.beerSlowTurnsRemaining = 0;
+  player.beerEffectStartedTurn = turnCounter;
+  player.invulnTurnsRemaining = Math.max(
+    player.invulnTurnsRemaining || 0,
+    TAVERN_BEER_PROTECTION_TURNS
+  );
+  updatePlayerResources(playerIndex);
+  syncTavernModalState(playerIndex);
+  showPrivatePickupToastForPlayer(
+    playerIndex,
+    `Пиво выпито: ${TAVERN_BEER_PROTECTION_TURNS} ходов неприкосновенности. Затем ${TAVERN_BEER_SLOW_TURNS} ходов −${TAVERN_BEER_SLOW_PENALTY} к броску.`
+  );
+  if (typeof emitStateNow === "function") emitStateNow(true);
+  return true;
+}
+
+function beginTavernWheelSpinVisual(payload = {}) {
+  tavernWheelVisualInProgress = true;
+  if (tavernModal) tavernModal.style.display = "none";
+  if (tavernWheelModal) tavernWheelModal.style.display = "flex";
+  if (tavernWheelStatus) tavernWheelStatus.textContent = "Колесо вращается...";
+  const landingIndex = Math.max(0, Math.min(11, Number(payload.landingIndex) || 0));
+  if (tavernFortuneWheel) {
+    tavernFortuneWheel.style.transition = "none";
+    tavernFortuneWheel.style.transform = "rotate(0deg)";
+    void tavernFortuneWheel.offsetWidth;
+    const landingAngle = landingIndex * 30 + 15;
+    tavernFortuneWheel.style.transition = `transform ${TAVERN_WHEEL_SPIN_DURATION_MS}ms cubic-bezier(0.12, 0.72, 0.12, 1)`;
+    tavernFortuneWheel.style.transform = `rotate(${1440 + 360 - landingAngle}deg)`;
+  }
+  syncTavernWheelModalState();
+}
+
+function finishTavernWheelSpinVisual(payload = {}) {
+  tavernWheelVisualInProgress = false;
+  const colorLabel = payload.outcomeColor === "red" ? "красное" : "чёрное";
+  if (tavernWheelStatus) {
+    tavernWheelStatus.textContent = payload.won
+      ? `Выпало ${colorLabel}. Победа: +${payload.payout || 0} золота.`
+      : `Выпало ${colorLabel}. Ставка проиграна.`;
+  }
+  syncTavernWheelModalState();
+}
+
+function startTavernWheelSpin(playerIndex, rawBet, chosenColor) {
+  const player = players[playerIndex];
+  const bet = normalizeTavernBet(rawBet);
+  const color = chosenColor === "red" || chosenColor === "black" ? chosenColor : null;
+  if (!player || playerIndex !== currentPlayerIndex || !isPlayerAtTavern(playerIndex)) return false;
+  if (tavernWheelRound || (player.tavernWheelPlaysThisTurn || 0) >= TAVERN_WHEEL_MAX_PLAYS_PER_TURN) return false;
+  if (!color || bet <= 0 || getTotalGold(player) < bet) return false;
+
+  spendGold(player, bet);
+  player.tavernWheelPlaysThisTurn = (player.tavernWheelPlaysThisTurn || 0) + 1;
+  const outcomeColor = getTavernRandomUnit() < 0.5 ? "red" : "black";
+  const matchingIndexes = outcomeColor === "red" ? [0, 2, 4, 6, 8, 10] : [1, 3, 5, 7, 9, 11];
+  const landingIndex = matchingIndexes[Math.floor(getTavernRandomUnit() * matchingIndexes.length)];
+  const round = {
+    id: ++tavernGameSequenceId,
+    playerIndex,
+    bet,
+    chosenColor: color,
+    outcomeColor,
+    landingIndex
+  };
+  tavernWheelRound = round;
+  updatePlayerResources(playerIndex);
+  if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
+    emitPrivateUiToPlayer(playerIndex, "startTavernWheelSpin", { landingIndex, chosenColor: color });
+  } else {
+    beginTavernWheelSpinVisual({ landingIndex, chosenColor: color });
+  }
+  if (typeof emitStateNow === "function") emitStateNow(true);
+
+  if (tavernWheelResolveTimer) clearTimeout(tavernWheelResolveTimer);
+  tavernWheelResolveTimer = setTimeout(() => {
+    tavernWheelResolveTimer = null;
+    if (!tavernWheelRound || tavernWheelRound.id !== round.id) return;
+    const won = round.chosenColor === round.outcomeColor;
+    const payout = won ? round.bet * 2 : 0;
+    if (payout > 0) player.pocket.gold += payout;
+    tavernWheelRound = null;
+    updatePlayerResources(playerIndex);
+    const resultPayload = { won, payout, outcomeColor: round.outcomeColor };
+    if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
+      emitPrivateUiToPlayer(playerIndex, "finishTavernWheelSpin", resultPayload);
+    } else {
+      finishTavernWheelSpinVisual(resultPayload);
+    }
+    if (typeof emitStateNow === "function") emitStateNow(true);
+  }, TAVERN_WHEEL_SPIN_DURATION_MS);
+  return true;
+}
+
+function createTavernDragonCrashMultiplier() {
+  const unit = Math.min(0.999999, Math.max(0, getTavernRandomUnit()));
+  const rawMultiplier = 1 / (1 - unit);
+  return Math.min(
+    TAVERN_DRAGON_MAX_MULTIPLIER,
+    Math.max(1, Math.floor(rawMultiplier * 100) / 100)
+  );
+}
+
+function getTavernDragonMultiplier(round, now = Date.now()) {
+  if (!round) return 1;
+  const elapsed = Math.max(0, now - round.startedAt);
+  return Math.max(1, Math.min(round.crashMultiplier, Math.exp(elapsed / TAVERN_DRAGON_GROWTH_MS)));
+}
+
+function beginTavernDragonVisual() {
+  tavernDragonVisualInProgress = true;
+  tavernDragonVisualStartedAt = performance.now();
+  if (tavernModal) tavernModal.style.display = "none";
+  if (tavernDragonModal) tavernDragonModal.style.display = "flex";
+  if (dragonCrashStage) dragonCrashStage.classList.remove("is-crashed", "is-cashed-out");
+  if (dragonCrashStage) dragonCrashStage.classList.add("is-running");
+  if (tavernDragonStatus) tavernDragonStatus.textContent = "Дракончик набирает высоту — снимайте вовремя!";
+  const animate = timestamp => {
+    if (!tavernDragonVisualInProgress) return;
+    const elapsed = Math.max(0, timestamp - tavernDragonVisualStartedAt);
+    const multiplier = Math.exp(elapsed / TAVERN_DRAGON_GROWTH_MS);
+    if (dragonCrashMultiplier) dragonCrashMultiplier.textContent = `${multiplier.toFixed(2)}×`;
+    if (dragonCrashSprite) {
+      const progress = Math.min(1, Math.log(Math.max(1, multiplier)) / Math.log(12));
+      dragonCrashSprite.style.transform = `translate(${progress * 145}px, ${-progress * 74}px) rotate(${-progress * 8}deg)`;
+    }
+    tavernDragonVisualFrame = requestAnimationFrame(animate);
+  };
+  if (tavernDragonVisualFrame) cancelAnimationFrame(tavernDragonVisualFrame);
+  tavernDragonVisualFrame = requestAnimationFrame(animate);
+  syncTavernDragonModalState();
+}
+
+function finishTavernDragonVisual(payload = {}) {
+  tavernDragonVisualInProgress = false;
+  if (tavernDragonVisualFrame) cancelAnimationFrame(tavernDragonVisualFrame);
+  tavernDragonVisualFrame = null;
+  const multiplier = Math.max(1, Number(payload.multiplier) || 1);
+  if (dragonCrashMultiplier) dragonCrashMultiplier.textContent = `${multiplier.toFixed(2)}×`;
+  if (dragonCrashStage) {
+    dragonCrashStage.classList.remove("is-running", "is-crashed", "is-cashed-out");
+    dragonCrashStage.classList.add(payload.won ? "is-cashed-out" : "is-crashed");
+  }
+  if (dragonCrashSprite) dragonCrashSprite.style.transform = "";
+  if (tavernDragonStatus) {
+    tavernDragonStatus.textContent = payload.won
+      ? `Вы сняли на ${multiplier.toFixed(2)}× и получили ${payload.payout || 0} золота.`
+      : `КРАШ на ${multiplier.toFixed(2)}×. Ставка потеряна.`;
+  }
+  syncTavernDragonModalState();
+}
+
+function finishTavernDragonRound(round, cashoutMultiplier = null) {
+  if (!round || !tavernDragonRound || tavernDragonRound.id !== round.id) return false;
+  if (tavernDragonResolveTimer) clearTimeout(tavernDragonResolveTimer);
+  tavernDragonResolveTimer = null;
+  const player = players[round.playerIndex];
+  const won = Number.isFinite(cashoutMultiplier);
+  const resultMultiplier = won ? Math.max(1, cashoutMultiplier) : round.crashMultiplier;
+  const payout = won ? Math.max(0, Math.floor(round.bet * resultMultiplier)) : 0;
+  if (won && player) player.pocket.gold += payout;
+  tavernDragonRound = null;
+  if (player) updatePlayerResources(round.playerIndex);
+  const resultPayload = { won, payout, multiplier: resultMultiplier };
+  if (shouldDelegatePrivateUiToPlayer(round.playerIndex)) {
+    emitPrivateUiToPlayer(round.playerIndex, "finishTavernDragon", resultPayload);
+  } else {
+    finishTavernDragonVisual(resultPayload);
+  }
+  if (typeof emitStateNow === "function") emitStateNow(true);
+  return true;
+}
+
+function startTavernDragonGame(playerIndex, rawBet) {
+  const player = players[playerIndex];
+  const bet = normalizeTavernBet(rawBet);
+  if (!player || playerIndex !== currentPlayerIndex || !isPlayerAtTavern(playerIndex)) return false;
+  if (tavernDragonRound || (player.tavernDragonPlaysThisTurn || 0) >= TAVERN_DRAGON_MAX_PLAYS_PER_TURN) return false;
+  if (bet <= 0 || getTotalGold(player) < bet) return false;
+
+  spendGold(player, bet);
+  player.tavernDragonPlaysThisTurn = (player.tavernDragonPlaysThisTurn || 0) + 1;
+  const crashMultiplier = createTavernDragonCrashMultiplier();
+  const startedAt = Date.now();
+  const crashDelay = Math.max(0, Math.log(crashMultiplier) * TAVERN_DRAGON_GROWTH_MS);
+  const round = {
+    id: ++tavernGameSequenceId,
+    playerIndex,
+    bet,
+    crashMultiplier,
+    startedAt,
+    crashAt: startedAt + crashDelay
+  };
+  tavernDragonRound = round;
+  updatePlayerResources(playerIndex);
+  if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
+    emitPrivateUiToPlayer(playerIndex, "startTavernDragon", {});
+  } else {
+    beginTavernDragonVisual();
+  }
+  if (typeof emitStateNow === "function") emitStateNow(true);
+  tavernDragonResolveTimer = setTimeout(() => {
+    finishTavernDragonRound(round, null);
+  }, Math.max(0, crashDelay));
+  return true;
+}
+
+function cashOutTavernDragon(playerIndex) {
+  const round = tavernDragonRound;
+  if (!round || round.playerIndex !== playerIndex || playerIndex !== currentPlayerIndex) return false;
+  const now = Date.now();
+  if (now >= round.crashAt) {
+    return finishTavernDragonRound(round, null);
+  }
+  const multiplier = getTavernDragonMultiplier(round, now);
+  return finishTavernDragonRound(round, multiplier);
+}
+
+function resetTavernRuntimeState() {
+  if (tavernWheelResolveTimer) clearTimeout(tavernWheelResolveTimer);
+  if (tavernDragonResolveTimer) clearTimeout(tavernDragonResolveTimer);
+  if (tavernDragonVisualFrame) cancelAnimationFrame(tavernDragonVisualFrame);
+  tavernWheelResolveTimer = null;
+  tavernDragonResolveTimer = null;
+  tavernDragonVisualFrame = null;
+  tavernWheelRound = null;
+  tavernDragonRound = null;
+  tavernWheelVisualInProgress = false;
+  tavernDragonVisualInProgress = false;
+  tavernWheelSelectedColor = null;
+  pendingTavernPlayerIndex = null;
+  if (tavernModal) tavernModal.style.display = "none";
+  if (tavernWheelModal) tavernWheelModal.style.display = "none";
+  if (tavernDragonModal) tavernDragonModal.style.display = "none";
+}
+
+if (tavernDrinkBeerBtn) {
+  tavernDrinkBeerBtn.addEventListener("click", () => {
+    if (shouldRoutePrivateUiActionToHost(pendingTavernPlayerIndex)) {
+      emitPrivateUiActionToHost({ modalType: "tavern", actionType: "drinkBeer", playerIndex: pendingTavernPlayerIndex });
+      return;
+    }
+    drinkTavernBeer();
+  });
+}
+if (tavernWheelBtn) tavernWheelBtn.addEventListener("click", openTavernWheelModal);
+if (tavernDragonBtn) tavernDragonBtn.addEventListener("click", openTavernDragonModal);
+if (tavernCloseBtn) tavernCloseBtn.addEventListener("click", closeTavernModal);
+if (tavernWheelBackBtn) tavernWheelBackBtn.addEventListener("click", returnFromTavernWheel);
+if (tavernDragonBackBtn) tavernDragonBackBtn.addEventListener("click", returnFromTavernDragon);
+
+tavernWheelColorButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    if (tavernWheelVisualInProgress) return;
+    tavernWheelSelectedColor = button.dataset.tavernWheelColor;
+    syncTavernWheelModalState();
+  });
+});
+if (tavernWheelBetInput) tavernWheelBetInput.addEventListener("input", () => syncTavernWheelModalState());
+if (tavernDragonBetInput) tavernDragonBetInput.addEventListener("input", () => syncTavernDragonModalState());
+
+if (tavernWheelSpinBtn) {
+  tavernWheelSpinBtn.addEventListener("click", () => {
+    const bet = normalizeTavernBet(tavernWheelBetInput?.value);
+    if (shouldRoutePrivateUiActionToHost(pendingTavernPlayerIndex)) {
+      emitPrivateUiActionToHost({
+        modalType: "tavern",
+        actionType: "spinWheel",
+        playerIndex: pendingTavernPlayerIndex,
+        payload: { bet, color: tavernWheelSelectedColor }
+      });
+      return;
+    }
+    startTavernWheelSpin(pendingTavernPlayerIndex, bet, tavernWheelSelectedColor);
+  });
+}
+
+if (tavernDragonStartBtn) {
+  tavernDragonStartBtn.addEventListener("click", () => {
+    const bet = normalizeTavernBet(tavernDragonBetInput?.value);
+    if (shouldRoutePrivateUiActionToHost(pendingTavernPlayerIndex)) {
+      emitPrivateUiActionToHost({
+        modalType: "tavern",
+        actionType: "startDragon",
+        playerIndex: pendingTavernPlayerIndex,
+        payload: { bet }
+      });
+      return;
+    }
+    startTavernDragonGame(pendingTavernPlayerIndex, bet);
+  });
+}
+
+if (tavernDragonCashoutBtn) {
+  tavernDragonCashoutBtn.addEventListener("click", () => {
+    if (shouldRoutePrivateUiActionToHost(pendingTavernPlayerIndex)) {
+      emitPrivateUiActionToHost({ modalType: "tavern", actionType: "cashoutDragon", playerIndex: pendingTavernPlayerIndex });
+      return;
+    }
+    cashOutTavernDragon(pendingTavernPlayerIndex);
+  });
+}
+
+[tavernModal, tavernWheelModal, tavernDragonModal].forEach(modal => {
+  if (!modal) return;
+  modal.addEventListener("click", event => {
+    if (event.target === modal) closeTavernModal();
+  });
+});
 
 const cityPoisonBtn = document.querySelector('[data-city-poison="apply-poison"]');
 
@@ -5769,14 +7135,17 @@ function syncWorkshopModalState(playerIndex) {
   if (!player) return;
   workshopPlayerIndex = playerIndex;
   const gold = getTotalGold(player);
+  const resources = getTotalResources(player);
   const costArmor = getDiscountedGoldCostForScope(player, 1500, "workshop");
   const costSword = getDiscountedGoldCostForScope(player, 2500, "workshop");
   const costHeroSword = getDiscountedGoldCostForScope(player, 6000, "workshop");
+  const costHarpoonGold = getDiscountedGoldCostForScope(player, HARPOON_GOLD_COST, "workshop");
   workshopButtons.forEach(btn => {
     const type = btn.getAttribute("data-workshop-buy");
     if (type === "armor") btn.disabled = gold < costArmor || player.hasArmor === true;
     if (type === "sword") btn.disabled = gold < costSword || player.hasWorkshopSword === true;
     if (type === "hero-sword") btn.disabled = gold < costHeroSword || player.hasSword === true || (player.rainbowStoneCount || 0) <= 0 || (player.heroHiltCount || 0) <= 0;
+    if (type === "harpoon") btn.disabled = gold < costHarpoonGold || resources < HARPOON_RESOURCE_COST;
     if (type === "rainbow-infl") btn.disabled = (player.rainbowStoneCount || 0) <= 0;
     if (type === "castle-armor") {
       btn.parentElement.style.display = isDayBuffActive("carpenter") ? "" : "none";
@@ -5792,6 +7161,12 @@ function syncWorkshopModalState(playerIndex) {
       setTradePrice(
         btn,
         `${goldPriceHtml(costHeroSword)} + <img class="price-icon" src="assets/icons/rainbow_stone.png" alt="Радужный камень" />Радужный камень + <img class="price-icon" src="assets/icons/hero_hilt.png" alt="Рукоять" />Рукоять`
+      );
+    }
+    if (type === "harpoon") {
+      setTradePrice(
+        btn,
+        `<img class="price-icon" src="assets/icons/icon-gold.png" alt="Золото" />Цена: ${costHarpoonGold} золота + <img class="price-icon" src="assets/icons/icon-resources.png" alt="Ресурсы" />${HARPOON_RESOURCE_COST} ресурсов`
       );
     }
   });
@@ -5866,6 +7241,17 @@ workshopButtons.forEach(btn => {
       flashPrice(btn, cost, "assets/icons/icon-gold.png", "Золото");
       flashPrice(btn, 1, "assets/icons/rainbow_stone.png", "Радужный камень");
       flashPrice(btn, 1, "assets/icons/hero_hilt.png", "Рукоять");
+    }
+    if (type === "harpoon") {
+      const goldCost = getDiscountedGoldCostForScope(player, HARPOON_GOLD_COST, "workshop");
+      if (getTotalGold(player) < goldCost || getTotalResources(player) < HARPOON_RESOURCE_COST) return;
+      spendGold(player, goldCost);
+      spendResources(player, HARPOON_RESOURCE_COST);
+      player.harpoonCount = (player.harpoonCount || 0) + 1;
+      updateInventory(workshopPlayerIndex);
+      showPickupToast("Горпун добавлен в инвентарь.");
+      flashPrice(btn, goldCost, "assets/icons/icon-gold.png", "Золото");
+      flashPrice(btn, HARPOON_RESOURCE_COST, "assets/icons/icon-resources.png", "Ресурсы");
     }
     if (type === "rainbow-infl") {
       if ((player.rainbowStoneCount || 0) <= 0) return;
@@ -6463,6 +7849,7 @@ function openContextForKey(key, playerIndex) {
   if (node && node.id === 19) return openWorkshop(playerIndex);
   if (node && node.id === 15) return openCity(playerIndex);
   if (node && node.id === 6) return openHire(playerIndex);
+  if (node && node.type === "tavern") return openTavernModal(playerIndex);
 }
 
 function isMercenaryStepAllowed(nx, ny, targetKey) {
@@ -7312,52 +8699,17 @@ function resolveTrollBattle(playerIndex, trollArmy) {
   };
 }
 
-function rollTrollCaveLoot(playerIndex) {
-  const player = players[playerIndex];
-  if (!player) return null;
-  const scaleSteps = Math.floor((turnCounter || 0) / 75);
-  const scale = 1 + (0.5 * scaleSteps);
-  const isEvening = getTimeOfDay().key === "evening";
-  const gold = isEvening
-    ? Math.floor(Math.random() * 351) + 400
-    : Math.floor(Math.random() * 301 * scale);
-  const resources = isEvening
-    ? Math.floor(Math.random() * 101) + 100
-    : Math.floor(Math.random() * 51 * scale);
-  const influenceLoss = Math.floor(Math.random() * 51);
-  const eveningChanceMult = isEvening ? 2 : 1;
-  const gotRainbow = Math.random() < 0.05 * eveningChanceMult;
-  const gotFlower = Math.random() < 0.05 * eveningChanceMult;
-  const gotToken = Math.random() < 0.15 * eveningChanceMult;
-  player.pocket.gold += gold;
-  player.pocket.resources += resources;
-  player.resources.influence -= influenceLoss;
-  const receivedRainbow = gotRainbow && tryAddSpecialArtifactToInventory(player, "rainbow");
-  const receivedFlower = gotFlower && tryAddSpecialArtifactToInventory(player, "flower");
-  if (gotToken) {
-    player.tokenCount = (player.tokenCount || 0) + 1;
-  }
-  updatePlayerResources(playerIndex);
-  updateInventory(playerIndex);
-  const parts = [
-    `\u0417\u043e\u043b\u043e\u0442\u043e: +${gold}`,
-    `\u0420\u0435\u0441\u0443\u0440\u0441\u044b: +${resources}`,
-    `\u0412\u043b\u0438\u044f\u043d\u0438\u0435: -${influenceLoss}`
-  ];
-  if (receivedRainbow) parts.push("\u0420\u0430\u0434\u0443\u0436\u043d\u044b\u0439 \u043a\u0430\u043c\u0435\u043d\u044c: \u043d\u0430\u0439\u0434\u0435\u043d");
-  if (gotRainbow && !receivedRainbow) parts.push("\u0420\u0430\u0434\u0443\u0436\u043d\u044b\u0439 \u043a\u0430\u043c\u0435\u043d\u044c: \u043d\u0435 \u043f\u043e\u043c\u0435\u0441\u0442\u0438\u043b\u0441\u044f, \u0441\u043b\u043e\u0442\u044b \u0437\u0430\u043d\u044f\u0442\u044b");
-  if (receivedFlower) parts.push("\u0422\u0430\u0438\u043d\u0441\u0442\u0432\u0435\u043d\u043d\u044b\u0439 \u0446\u0432\u0435\u0442\u043e\u043a: \u043d\u0430\u0439\u0434\u0435\u043d");
-  if (gotFlower && !receivedFlower) parts.push("\u0422\u0430\u0438\u043d\u0441\u0442\u0432\u0435\u043d\u043d\u044b\u0439 \u0446\u0432\u0435\u0442\u043e\u043a: \u043d\u0435 \u043f\u043e\u043c\u0435\u0441\u0442\u0438\u043b\u0441\u044f, \u0441\u043b\u043e\u0442\u044b \u0437\u0430\u043d\u044f\u0442\u044b");
-  if (gotToken) parts.push("\u0416\u0435\u0442\u043e\u043d: \u043d\u0430\u0439\u0434\u0435\u043d");
-  return parts.join(". ");
-}
-
-function stealResources(winnerIndex, loserIndex) {
+function stealResources(winnerIndex, loserIndex, options = {}) {
   const winner = players[winnerIndex];
   const loser = players[loserIndex];
+    const stealRatio = Math.max(0, Math.min(1, Number(options.stealRatio ?? 0.8)));
     const stolen = {gold: 0, army: 0, resources: 0};
     ["gold", "army", "resources"].forEach(type => {
-      const amount = Math.floor(loser.pocket[type] * 0.8);
+      const protectedAmount = type === "army"
+        ? Math.min(loser.pocket.army || 0, Math.max(0, options.protectedArmy || 0))
+        : 0;
+      const availableAmount = Math.max(0, (loser.pocket[type] || 0) - protectedAmount);
+      const amount = Math.floor(availableAmount * stealRatio);
       if (amount <= 0) return;
       loser.pocket[type] -= amount;
       winner.pocket[type] += amount;
@@ -7483,47 +8835,196 @@ function resolveDragonBattle(playerIndex, dragonArmy = 75) {
   };
 }
 
+function getPlayerBattleCardWinnerIndex(attackerIndex, defenderIndex, attackerCard, defenderCard) {
+  if (!PLAYER_BATTLE_CARD_RULES[attackerCard] || !PLAYER_BATTLE_CARD_RULES[defenderCard]) return null;
+  if (attackerCard === defenderCard) return null;
+  return PLAYER_BATTLE_CARD_RULES[attackerCard].beats === defenderCard
+    ? attackerIndex
+    : defenderIndex;
+}
+
+function getPlayerBattleDroppableItems(player) {
+  const items = [];
+  const addCountItem = (property, label, onRemove = null) => {
+    const count = Math.max(0, player[property] || 0);
+    if (count <= 0) return;
+    items.push({
+      label,
+      remove() {
+        const before = Math.max(0, player[property] || 0);
+        player[property] = Math.max(0, before - 1);
+        if (onRemove) onRemove(before);
+      }
+    });
+  };
+  const addBooleanItem = (property, label, attackLoss = 0) => {
+    if (!player[property]) return;
+    items.push({
+      label,
+      remove() {
+        player[property] = false;
+        if (attackLoss > 0) {
+          player.attack = Math.max(0, (player.attack || 0) - attackLoss);
+        }
+      }
+    });
+  };
+
+  addCountItem("poisonCount", "Яд");
+  addCountItem("invisPotionCount", "Зелье невидимости");
+  addCountItem("luckPotionCount", "Зелье удачи");
+  addCountItem("invulnPotionCount", "Зелье неприкосновенности");
+  addCountItem("cloverCount", "Клевер");
+  addCountItem("flowerCount", "Таинственный цветок");
+  addCountItem("voidShardCount", "Осколок пустоты");
+  addCountItem("tokenCount", "Жетон");
+  addCountItem("bootsCount", "Сапоги");
+  addCountItem(
+    "ballistaCount",
+    getPlayerBallistaLevel(player) >= 2 ? "Баллиста II" : "Баллиста",
+    before => {
+      if (before <= 1) {
+        player.ballistaLevel = 0;
+        player.ballistaShotsThisTurn = 0;
+      }
+    }
+  );
+  addCountItem("boltCount", "Болт");
+  addCountItem("harpoonCount", "Горпун");
+  addCountItem("trapStunCount", "Ловушка-стан");
+  addCountItem("bridgeCount", "Мост");
+  addCountItem("ringCount", "Кольцо убеждения");
+  addCountItem("terrorRingCount", "Кольцо ужаса", () => {
+    player.attack = Math.max(0, (player.attack || 0) - 8);
+  });
+  addCountItem("rainbowStoneCount", "Радужный камень");
+  addCountItem("mysticStoneCount", "Необычный камень");
+  addCountItem("trollClubCount", "Дубинка троллей", before => {
+    if (before === 1) player.attack = Math.max(0, (player.attack || 0) - 8);
+  });
+  addCountItem("heroHiltCount", "Рукоять меча героя");
+  addCountItem("werewolfFangCount", "Клык оборотня", () => {
+    player.attack = Math.max(0, (player.attack || 0) - 12);
+  });
+  addCountItem("werewolfAmuletCount", "Амулет оборотня");
+  addCountItem("luckAmuletCount", "Амулет удачи");
+  if ((player.builderAmuletCount || 0) > 0) {
+    items.push({
+      label: "Амулет строителя",
+      remove() {
+        player.builderAmuletCount = Math.max(0, (player.builderAmuletCount || 0) - 1);
+        if (player.builderAmuletCount <= 0) {
+          player.builderAmuletChargeCount = 0;
+          player.builderAmuletTurnCounter = 0;
+        }
+      }
+    });
+  }
+  addBooleanItem("hasCrystalSword", "Кристальный меч", 10);
+  addBooleanItem("hasSword", "Меч героя");
+  addCountItem("fogOfWarCount", "Туман войны");
+  return items;
+}
+
+function tryKnockRandomPlayerBattleItem(targetPlayerIndex) {
+  const target = players[targetPlayerIndex];
+  if (!target) return { success: false, reason: "no-target" };
+  const items = getPlayerBattleDroppableItems(target);
+  if (!items.length) return { success: false, reason: "empty" };
+  if (Math.random() >= 0.5) return { success: false, reason: "chance" };
+  const item = items[Math.floor(Math.random() * items.length)];
+  item.remove();
+  updatePlayerResources(targetPlayerIndex);
+  updateInventory(targetPlayerIndex);
+  return { success: true, label: item.label };
+}
+
+function getPlayerBattlePersonalStrike(player, ownCard, enemyCard) {
+  let strike = Math.max(0, player?.attack || 0);
+  if (ownCard === "attack") strike *= 2.25;
+  if (enemyCard === "feint") strike *= 0.25;
+  return Math.max(0, Math.floor(strike));
+}
+
+function getPlayerBattleArmyAllocation(initialArmy, cardKey) {
+  const reserve = cardKey === "defense" ? Math.floor(initialArmy * 0.75) : 0;
+  return {
+    reserve,
+    fighting: Math.max(0, initialArmy - reserve)
+  };
+}
+
 function resolveBattle(attackerIndex, defenderIndex, options = {}) {
   const attacker = players[attackerIndex];
   const defender = players[defenderIndex];
+  if (!attacker || !defender) return null;
   if ((defender.invulnTurnsRemaining || 0) > 0) {
-    showPickupToast("Противник под зельем неприкосновенности — атака невозможна.");
+    showPickupToast("На противника действует неприкосновенность — атака невозможна.");
     return null;
   }
-  const initialDefArmy = Math.max(0, defender.pocket.army);
-  const initialAttArmy = Math.max(0, attacker.pocket.army);
 
-  let attackerRemaining = initialAttArmy;
-  let defenderRemaining = initialDefArmy;
+  const attackerCard = PLAYER_BATTLE_CARD_RULES[options.attackerCard] ? options.attackerCard : "attack";
+  const defenderCard = PLAYER_BATTLE_CARD_RULES[options.defenderCard] ? options.defenderCard : "attack";
+  const initialAttArmy = Math.max(0, attacker.pocket.army || 0);
+  const initialDefArmy = Math.max(0, defender.pocket.army || 0);
+  const attackerAllocation = getPlayerBattleArmyAllocation(initialAttArmy, attackerCard);
+  const defenderAllocation = getPlayerBattleArmyAllocation(initialDefArmy, defenderCard);
+  let attackerFighting = attackerAllocation.fighting;
+  let defenderFighting = defenderAllocation.fighting;
+  const cardWinnerIndex = getPlayerBattleCardWinnerIndex(
+    attackerIndex,
+    defenderIndex,
+    attackerCard,
+    defenderCard
+  );
 
-  // Личная атака защитника срабатывает первой
-  const defenderStrike = Math.max(0, defender.attack || 0);
-  if (defenderStrike > 0 && attackerRemaining > 0) {
-    attackerRemaining = Math.max(0, attackerRemaining - defenderStrike);
+  let attackerCardBonusDamage = 0;
+  let defenderCardBonusDamage = 0;
+  let knockedItem = null;
+  if (cardWinnerIndex === attackerIndex) {
+    if (attackerCard === "attack") {
+      attackerCardBonusDamage = Math.min(defenderFighting, Math.floor(initialAttArmy * 0.2));
+      defenderFighting = Math.max(0, defenderFighting - attackerCardBonusDamage);
+    } else if (attackerCard === "feint") {
+      knockedItem = {
+        sourcePlayerIndex: attackerIndex,
+        targetPlayerIndex: defenderIndex,
+        ...tryKnockRandomPlayerBattleItem(defenderIndex)
+      };
+    }
+  } else if (cardWinnerIndex === defenderIndex) {
+    if (defenderCard === "attack") {
+      defenderCardBonusDamage = Math.min(attackerFighting, Math.floor(initialDefArmy * 0.2));
+      attackerFighting = Math.max(0, attackerFighting - defenderCardBonusDamage);
+    } else if (defenderCard === "feint") {
+      knockedItem = {
+        sourcePlayerIndex: defenderIndex,
+        targetPlayerIndex: attackerIndex,
+        ...tryKnockRandomPlayerBattleItem(attackerIndex)
+      };
+    }
   }
 
-  // Затем личная атака атакующего
-  const attackerStrike = Math.max(0, attacker.attack || 0);
-  if (attackerStrike > 0 && defenderRemaining > 0) {
-    defenderRemaining = Math.max(0, defenderRemaining - attackerStrike);
-  }
+  // Сохраняем прежний порядок личных атак: первым бьёт защищающийся герой.
+  const defenderStrike = getPlayerBattlePersonalStrike(defender, defenderCard, attackerCard);
+  const defenderPersonalDamage = Math.min(attackerFighting, defenderStrike);
+  attackerFighting = Math.max(0, attackerFighting - defenderPersonalDamage);
 
-  // Затем идут удары войск: по очереди, случайный урон 1–3
-  while (attackerRemaining > 3 && defenderRemaining > 3) {
-    const defHit = Math.floor(Math.random() * 3) + 1;
-    attackerRemaining = Math.max(0, attackerRemaining - defHit);
-    if (attackerRemaining <= 3) break;
-    const attHit = Math.floor(Math.random() * 3) + 1;
-    defenderRemaining = Math.max(0, defenderRemaining - attHit);
-  }
+  const attackerStrike = getPlayerBattlePersonalStrike(attacker, attackerCard, defenderCard);
+  const attackerPersonalDamage = Math.min(defenderFighting, attackerStrike);
+  defenderFighting = Math.max(0, defenderFighting - attackerPersonalDamage);
 
-  attacker.pocket.army = Math.max(0, attackerRemaining);
-  defender.pocket.army = Math.max(0, defenderRemaining);
+  // Основной обмен армий одновременный и строго 1 к 1.
+  const armyExchangeLoss = Math.min(attackerFighting, defenderFighting);
+  attackerFighting = Math.max(0, attackerFighting - armyExchangeLoss);
+  defenderFighting = Math.max(0, defenderFighting - armyExchangeLoss);
 
-  let winnerIndex = attackerIndex;
-  if (defenderRemaining > attackerRemaining) {
-    winnerIndex = defenderIndex;
-  }
+  const attackerRemaining = attackerFighting + attackerAllocation.reserve;
+  const defenderRemaining = defenderFighting + defenderAllocation.reserve;
+  attacker.pocket.army = attackerRemaining;
+  defender.pocket.army = defenderRemaining;
+
+  const winnerIndex = defenderRemaining > attackerRemaining ? defenderIndex : attackerIndex;
   const loserIndex = winnerIndex === attackerIndex ? defenderIndex : attackerIndex;
   const loser = players[loserIndex];
   let influenceLoss = 0;
@@ -7531,9 +9032,19 @@ function resolveBattle(attackerIndex, defenderIndex, options = {}) {
     influenceLoss = Math.min(HERO_BATTLE_INFLUENCE_LOSS, Math.max(0, loser.resources.influence || 0));
     loser.resources.influence = Math.max(0, (loser.resources.influence || 0) - HERO_BATTLE_INFLUENCE_LOSS);
   }
+
+  const loserProtectedArmy = loserIndex === attackerIndex
+    ? attackerAllocation.reserve
+    : defenderAllocation.reserve;
+  const loserCard = loserIndex === attackerIndex ? attackerCard : defenderCard;
+  const defenseCardProtectedLoot = loserCard === "defense" && cardWinnerIndex === loserIndex;
+  const stolenRatio = defenseCardProtectedLoot ? 0.25 : 0.8;
   let stolen = null;
   if (!options.noSteal) {
-    stolen = stealResources(winnerIndex, loserIndex);
+    stolen = stealResources(winnerIndex, loserIndex, {
+      protectedArmy: loserProtectedArmy,
+      stealRatio: stolenRatio
+    });
   }
   updatePlayerResources(attackerIndex);
   updatePlayerResources(defenderIndex);
@@ -7550,8 +9061,352 @@ function resolveBattle(attackerIndex, defenderIndex, options = {}) {
     defenderIndex,
     attackerIndex,
     influenceLoss,
-    stolen
+    stolen,
+    playerBattleCards: { attacker: attackerCard, defender: defenderCard },
+    cardWinnerIndex,
+    attackerReserve: attackerAllocation.reserve,
+    defenderReserve: defenderAllocation.reserve,
+    attackerCardBonusDamage,
+    defenderCardBonusDamage,
+    attackerPersonalDamage,
+    defenderPersonalDamage,
+    armyExchangeLoss,
+    knockedItem,
+    stolenRatio,
+    defenseCardProtectedLoot
   };
+}
+
+function isOnlinePlayerBattleMode() {
+  return typeof socket !== "undefined" &&
+    Boolean(socket) &&
+    typeof onlineMatchStarted !== "undefined" &&
+    Boolean(onlineMatchStarted);
+}
+
+function clonePendingPlayerBattleForSync() {
+  if (!pendingPlayerBattle) return null;
+  const submitted = players.map((_, index) => Boolean(pendingPlayerBattle.choices?.[index]));
+  return {
+    id: pendingPlayerBattle.id,
+    attackerIndex: pendingPlayerBattle.attackerIndex,
+    defenderIndex: pendingPlayerBattle.defenderIndex,
+    targetX: pendingPlayerBattle.targetX,
+    targetY: pendingPlayerBattle.targetY,
+    noSteal: Boolean(pendingPlayerBattle.noSteal),
+    defenderOwnsCastle: Boolean(pendingPlayerBattle.defenderOwnsCastle),
+    phase: pendingPlayerBattle.phase || "choosing",
+    choicesSubmitted: submitted
+  };
+}
+
+function getPlayerBattleCardMarkup(cardKey, options = {}) {
+  const card = PLAYER_BATTLE_CARD_RULES[cardKey];
+  if (!card) return "";
+  const tag = options.button ? "button" : "article";
+  const attributes = options.button
+    ? `type="button" data-player-battle-card="${card.key}"`
+    : "";
+  const classes = ["player-battle-tactic"];
+  if (options.selected) classes.push("is-selected");
+  if (options.winner) classes.push("is-card-winner");
+  if (options.loser) classes.push("is-card-loser");
+  return `<${tag} ${attributes} class="${classes.join(" ")}">
+    ${options.sideLabel ? `<span class="player-battle-reveal-side">${options.sideLabel}</span>` : ""}
+    <span class="player-battle-tactic-mark" aria-hidden="true">${card.mark}</span>
+    <span class="player-battle-tactic-name">${card.name}</span>
+    <span class="player-battle-tactic-effect"><strong>Гарантированно</strong>${card.always}</span>
+    <span class="player-battle-tactic-effect"><strong>Если карта победила</strong>${card.victory}</span>
+  </${tag}>`;
+}
+
+function openPlayerBattleCardModal(playerIndex, battle = pendingPlayerBattle) {
+  if (!playerBattleCardModal || !playerBattleCards || !battle) return false;
+  if (isOnlinePlayerBattleMode() && typeof localPlayerIndex === "number" && localPlayerIndex !== playerIndex) {
+    return false;
+  }
+  playerBattleCardModal.dataset.battleId = String(battle.id);
+  playerBattleCardModal.dataset.playerIndex = String(playerIndex);
+  playerBattleCardModal.dataset.phase = "choosing";
+  if (playerBattleCardTitle) {
+    playerBattleCardTitle.textContent = `${players[playerIndex]?.name || `Игрок ${playerIndex + 1}`}, выберите карту`;
+  }
+  if (playerBattleCardStatus) {
+    playerBattleCardStatus.textContent = "Соперник не увидит ваш выбор до одновременного раскрытия.";
+  }
+  playerBattleCards.className = "player-battle-card-grid";
+  playerBattleCards.innerHTML = Object.keys(PLAYER_BATTLE_CARD_RULES)
+    .map(cardKey => getPlayerBattleCardMarkup(cardKey, { button: true }))
+    .join("");
+  playerBattleCardModal.style.display = "flex";
+  return true;
+}
+
+function showPlayerBattleCardWaiting(playerIndex, cardKey, battleId) {
+  if (!playerBattleCardModal || !playerBattleCards) return;
+  if (String(playerBattleCardModal.dataset.battleId || "") !== String(battleId)) return;
+  if (Number(playerBattleCardModal.dataset.playerIndex) !== playerIndex) return;
+  playerBattleCardModal.dataset.phase = "waiting";
+  if (playerBattleCardTitle) playerBattleCardTitle.textContent = "Выбор зафиксирован";
+  if (playerBattleCardStatus) playerBattleCardStatus.textContent = "Ожидаем выбор соперника…";
+  playerBattleCards.className = "player-battle-card-grid is-waiting";
+  playerBattleCards.querySelectorAll("[data-player-battle-card]").forEach(button => {
+    button.disabled = true;
+    button.classList.toggle("is-selected", button.dataset.playerBattleCard === cardKey);
+  });
+}
+
+function showPlayerBattleCardReveal(payload) {
+  if (!payload || !playerBattleCardModal || !playerBattleCards) return;
+  const attackerCard = PLAYER_BATTLE_CARD_RULES[payload.attackerCard];
+  const defenderCard = PLAYER_BATTLE_CARD_RULES[payload.defenderCard];
+  if (!attackerCard || !defenderCard) return;
+  const attackerIndex = Number(payload.attackerIndex);
+  const defenderIndex = Number(payload.defenderIndex);
+  const winnerIndex = Number.isInteger(payload.cardWinnerIndex) ? payload.cardWinnerIndex : null;
+  playerBattleCardModal.dataset.battleId = String(payload.battleId);
+  playerBattleCardModal.dataset.phase = "reveal";
+  if (playerBattleCardTitle) playerBattleCardTitle.textContent = "Карты раскрыты";
+  if (playerBattleCardStatus) {
+    playerBattleCardStatus.textContent = winnerIndex === null
+      ? `Оба игрока выбрали «${attackerCard.name}». Бонус победы не срабатывает.`
+      : `${players[winnerIndex]?.name || `Игрок ${winnerIndex + 1}`} выигрывает карточный розыгрыш.`;
+  }
+  playerBattleCards.className = "player-battle-reveal-grid";
+  playerBattleCards.innerHTML = [
+    getPlayerBattleCardMarkup(attackerCard.key, {
+      sideLabel: `${players[attackerIndex]?.name || `Игрок ${attackerIndex + 1}`} · нападающий`,
+      winner: winnerIndex === attackerIndex,
+      loser: winnerIndex === defenderIndex
+    }),
+    '<div class="player-battle-reveal-vs">VS</div>',
+    getPlayerBattleCardMarkup(defenderCard.key, {
+      sideLabel: `${players[defenderIndex]?.name || `Игрок ${defenderIndex + 1}`} · защищающийся`,
+      winner: winnerIndex === defenderIndex,
+      loser: winnerIndex === attackerIndex
+    })
+  ].join("");
+  playerBattleCardModal.style.display = "flex";
+}
+
+function closePlayerBattleCardModal() {
+  if (!playerBattleCardModal) return;
+  playerBattleCardModal.style.display = "none";
+  delete playerBattleCardModal.dataset.battleId;
+  delete playerBattleCardModal.dataset.playerIndex;
+  delete playerBattleCardModal.dataset.phase;
+  if (playerBattleCards) playerBattleCards.innerHTML = "";
+}
+
+function presentPlayerBattleChoiceToPlayer(playerIndex) {
+  if (!pendingPlayerBattle) return;
+  if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
+    emitPrivateUiToPlayer(playerIndex, "showPlayerBattleCards", {
+      battle: clonePendingPlayerBattleForSync(),
+      playerIndex
+    });
+    return;
+  }
+  openPlayerBattleCardModal(playerIndex, pendingPlayerBattle);
+}
+
+function presentPlayerBattleRevealToParticipants(payload) {
+  [payload.attackerIndex, payload.defenderIndex].forEach(playerIndex => {
+    if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
+      emitPrivateUiToPlayer(playerIndex, "revealPlayerBattleCards", payload);
+    } else if (!isOnlinePlayerBattleMode() || localPlayerIndex === playerIndex) {
+      showPlayerBattleCardReveal(payload);
+    }
+  });
+}
+
+function hidePlayerBattleCardsForParticipants(attackerIndex, defenderIndex) {
+  [attackerIndex, defenderIndex].forEach(playerIndex => {
+    if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
+      emitPrivateUiToPlayer(playerIndex, "hidePlayerBattleCards", {});
+    }
+  });
+  closePlayerBattleCardModal();
+}
+
+function beginPlayerBattleCardSelection(attackerIndex, defenderIndex, options = {}) {
+  if (pendingPlayerBattle) return false;
+  const attacker = players[attackerIndex];
+  const defender = players[defenderIndex];
+  if (!attacker || !defender) return false;
+  const attackerLayer = attacker.layer || WORLD_LAYER_UPPER;
+  const defenderLayer = defender.layer || WORLD_LAYER_UPPER;
+  const targetX = Number(options.targetX);
+  const targetY = Number(options.targetY);
+  const targetKey = Number.isFinite(targetX) && Number.isFinite(targetY)
+    ? `${targetX},${targetY}`
+    : `${defender.x},${defender.y}`;
+  if (
+    attackerLayer === WORLD_LAYER_UPPER &&
+    defenderLayer === WORLD_LAYER_UPPER &&
+    isTavernSafeCell(targetKey, WORLD_LAYER_UPPER)
+  ) {
+    showPrivatePickupToastForPlayer(attackerIndex, "В таверне действует перемирие — нападать здесь нельзя.");
+    return false;
+  }
+  playerBattleSequenceId += 1;
+  pendingPlayerBattle = {
+    id: playerBattleSequenceId,
+    attackerIndex,
+    defenderIndex,
+    targetX: Number(options.targetX),
+    targetY: Number(options.targetY),
+    noSteal: Boolean(options.noSteal),
+    defenderOwnsCastle: Boolean(options.defenderOwnsCastle),
+    phase: "choosing",
+    choices: players.map(() => null)
+  };
+  playerBattleRevealState = { attackerIndex, defenderIndex, battleId: pendingPlayerBattle.id };
+  localPlayerBattleSelection = null;
+  players.forEach((_, index) => updatePlayerResources(index));
+
+  if (isOnlinePlayerBattleMode()) {
+    presentPlayerBattleChoiceToPlayer(attackerIndex);
+    presentPlayerBattleChoiceToPlayer(defenderIndex);
+  } else {
+    presentPlayerBattleChoiceToPlayer(attackerIndex);
+  }
+  if (typeof emitStateNow === "function") emitStateNow(true);
+  return true;
+}
+
+function finishPendingPlayerBattle(battleId) {
+  if (!pendingPlayerBattle || pendingPlayerBattle.id !== battleId) return false;
+  if (pendingPlayerBattle.phase !== "reveal") return false;
+  const battle = pendingPlayerBattle;
+  const attackerCard = battle.choices[battle.attackerIndex];
+  const defenderCard = battle.choices[battle.defenderIndex];
+  pendingPlayerBattle = null;
+  playerBattleResolveTimer = null;
+  hidePlayerBattleCardsForParticipants(battle.attackerIndex, battle.defenderIndex);
+
+  const result = resolveBattle(battle.attackerIndex, battle.defenderIndex, {
+    noSteal: battle.noSteal,
+    attackerCard,
+    defenderCard
+  });
+  if (!result) {
+    endTurn();
+    if (typeof emitStateNow === "function") emitStateNow(true);
+    return false;
+  }
+
+  const attackerWon = result.winnerIndex === battle.attackerIndex;
+  if (battle.defenderOwnsCastle && attackerWon) {
+    showPickupToast("Победа над игроком. Начинается штурм замка.");
+    finalizeMove(battle.targetX, battle.targetY);
+  } else {
+    showBattleModal(result);
+    if (attackerWon) {
+      finalizeMove(battle.targetX, battle.targetY);
+    } else {
+      endTurn();
+    }
+  }
+  if (typeof emitStateNow === "function") emitStateNow(true);
+  return true;
+}
+
+function submitPlayerBattleCard(playerIndex, cardKey, battleId) {
+  if (!pendingPlayerBattle || pendingPlayerBattle.id !== Number(battleId)) return false;
+  if (pendingPlayerBattle.phase !== "choosing") return false;
+  if (!PLAYER_BATTLE_CARD_RULES[cardKey]) return false;
+  if (![pendingPlayerBattle.attackerIndex, pendingPlayerBattle.defenderIndex].includes(playerIndex)) return false;
+  if (pendingPlayerBattle.choices[playerIndex]) return false;
+
+  pendingPlayerBattle.choices[playerIndex] = cardKey;
+  if (!isOnlinePlayerBattleMode() || localPlayerIndex === playerIndex) {
+    showPlayerBattleCardWaiting(playerIndex, cardKey, pendingPlayerBattle.id);
+  }
+  const attackerChoice = pendingPlayerBattle.choices[pendingPlayerBattle.attackerIndex];
+  const defenderChoice = pendingPlayerBattle.choices[pendingPlayerBattle.defenderIndex];
+  if (!attackerChoice || !defenderChoice) {
+    if (!isOnlinePlayerBattleMode()) {
+      const nextPlayerIndex = playerIndex === pendingPlayerBattle.attackerIndex
+        ? pendingPlayerBattle.defenderIndex
+        : pendingPlayerBattle.attackerIndex;
+      setTimeout(() => openPlayerBattleCardModal(nextPlayerIndex, pendingPlayerBattle), 250);
+    }
+    if (typeof emitStateNow === "function") emitStateNow(true);
+    return true;
+  }
+
+  pendingPlayerBattle.phase = "reveal";
+  const cardWinnerIndex = getPlayerBattleCardWinnerIndex(
+    pendingPlayerBattle.attackerIndex,
+    pendingPlayerBattle.defenderIndex,
+    attackerChoice,
+    defenderChoice
+  );
+  const revealPayload = {
+    battleId: pendingPlayerBattle.id,
+    attackerIndex: pendingPlayerBattle.attackerIndex,
+    defenderIndex: pendingPlayerBattle.defenderIndex,
+    attackerCard: attackerChoice,
+    defenderCard: defenderChoice,
+    cardWinnerIndex
+  };
+  presentPlayerBattleRevealToParticipants(revealPayload);
+  if (typeof emitStateNow === "function") emitStateNow(true);
+  if (playerBattleResolveTimer) clearTimeout(playerBattleResolveTimer);
+  playerBattleResolveTimer = setTimeout(
+    () => finishPendingPlayerBattle(revealPayload.battleId),
+    PLAYER_BATTLE_CARD_REVEAL_DELAY
+  );
+  return true;
+}
+
+function syncPlayerBattleCardModalFromState() {
+  if (!pendingPlayerBattle) {
+    closePlayerBattleCardModal();
+    return;
+  }
+  if (!isOnlinePlayerBattleMode() || typeof localPlayerIndex !== "number") return;
+  const viewerIndex = localPlayerIndex;
+  if (![pendingPlayerBattle.attackerIndex, pendingPlayerBattle.defenderIndex].includes(viewerIndex)) return;
+  const currentBattleId = String(playerBattleCardModal?.dataset.battleId || "");
+  const currentPhase = playerBattleCardModal?.dataset.phase || "";
+  if (pendingPlayerBattle.phase === "reveal" && currentBattleId === String(pendingPlayerBattle.id) && currentPhase === "reveal") {
+    return;
+  }
+  const submitted = Boolean(pendingPlayerBattle.choicesSubmitted?.[viewerIndex]);
+  if (currentBattleId !== String(pendingPlayerBattle.id)) {
+    openPlayerBattleCardModal(viewerIndex, pendingPlayerBattle);
+  }
+  if (submitted) {
+    const selectedCard = localPlayerBattleSelection?.battleId === pendingPlayerBattle.id
+      ? localPlayerBattleSelection.cardKey
+      : null;
+    showPlayerBattleCardWaiting(viewerIndex, selectedCard, pendingPlayerBattle.id);
+  }
+}
+
+if (playerBattleCards) {
+  playerBattleCards.addEventListener("click", event => {
+    const button = event.target.closest("[data-player-battle-card]");
+    if (!button || button.disabled) return;
+    const cardKey = button.dataset.playerBattleCard;
+    const playerIndex = Number(playerBattleCardModal?.dataset.playerIndex);
+    const battleId = Number(playerBattleCardModal?.dataset.battleId);
+    if (!Number.isInteger(playerIndex) || !Number.isInteger(battleId)) return;
+    localPlayerBattleSelection = { battleId, cardKey };
+    if (shouldRoutePrivateUiActionToHost(playerIndex)) {
+      emitPrivateUiActionToHost({
+        modalType: "playerBattle",
+        actionType: "chooseCard",
+        playerIndex,
+        payload: { battleId, cardKey }
+      });
+      showPlayerBattleCardWaiting(playerIndex, cardKey, battleId);
+      return;
+    }
+    submitPlayerBattleCard(playerIndex, cardKey, battleId);
+  });
 }
 
 function resolveMercenaryBattle(playerIndex, mercenary) {
@@ -7780,8 +9635,49 @@ function buildBattleSummaryLines(result) {
       ].filter(Boolean);
     }
     const lines = [];
-    if (result.defenderAutoKilled > 0) {
-      lines.push(`Обороняющийся сразу убил ${result.defenderAutoKilled} войск.`);
+    if (result.playerBattleCards) {
+      const attackerCard = PLAYER_BATTLE_CARD_RULES[result.playerBattleCards.attacker];
+      const defenderCard = PLAYER_BATTLE_CARD_RULES[result.playerBattleCards.defender];
+      lines.push(
+        "<strong>КАРТОЧНЫЙ РОЗЫГРЫШ</strong>",
+        `Игрок ${result.attackerIndex + 1}: ${attackerCard?.name || "—"}`,
+        `Игрок ${result.defenderIndex + 1}: ${defenderCard?.name || "—"}`,
+        result.cardWinnerIndex === null
+          ? "Карты равны — бонус победы не сработал."
+          : `Победила карта игрока ${result.cardWinnerIndex + 1}.`
+      );
+      if (result.attackerReserve > 0) {
+        lines.push(`Игрок ${result.attackerIndex + 1}: ${result.attackerReserve} войск сохранено в резерве.`);
+      }
+      if (result.defenderReserve > 0) {
+        lines.push(`Игрок ${result.defenderIndex + 1}: ${result.defenderReserve} войск сохранено в резерве.`);
+      }
+      if (result.attackerCardBonusDamage > 0) {
+        lines.push(`Бонус карты игрока ${result.attackerIndex + 1}: уничтожено ${result.attackerCardBonusDamage} войск без ответа.`);
+      }
+      if (result.defenderCardBonusDamage > 0) {
+        lines.push(`Бонус карты игрока ${result.defenderIndex + 1}: уничтожено ${result.defenderCardBonusDamage} войск без ответа.`);
+      }
+      if (result.knockedItem) {
+        if (result.knockedItem.success) {
+          lines.push(`Финт игрока ${result.knockedItem.sourcePlayerIndex + 1}: выбит предмет «${result.knockedItem.label}».`);
+        } else if (result.knockedItem.reason === "empty") {
+          lines.push("Финт сработал, но в инвентаре противника нечего выбивать.");
+        } else {
+          lines.push("Финт: попытка выбить предмет не удалась.");
+        }
+      }
+      if (result.defenseCardProtectedLoot) {
+        lines.push("Победа «Обороны»: с проигравшего забрано только 25% доступной добычи.");
+      }
+      lines.push(
+        "\u00A0",
+        "<strong>ЛИЧНЫЕ АТАКИ</strong>",
+        `Защищающийся герой уничтожил ${result.defenderPersonalDamage} войск.`,
+        `Нападающий герой уничтожил ${result.attackerPersonalDamage} войск.`,
+        `Обмен армий 1 к 1: каждая сторона потеряла ${result.armyExchangeLoss} войск.`,
+        "\u00A0"
+      );
     }
     lines.push(
       `Игрок ${result.attackerIndex + 1}: Потерял ${result.attackerLost} войск`,
@@ -7899,6 +9795,10 @@ function refreshCastleModal(key, playerIndex) {
   if (ballistaBuyBtn) {
     const hasBallista = player ? (player.ballistaCount || 0) > 0 : false;
     ballistaBuyBtn.disabled = !player || hasBallista || playerResources < BALLISTA_COST;
+  }
+  if (ballistaUpgradeBtn) {
+    const ballistaLevel = getPlayerBallistaLevel(player);
+    ballistaUpgradeBtn.disabled = !player || ballistaLevel !== 1 || playerResources < BALLISTA_LEVEL_2_COST;
   }
   if (boltBuyBtn) {
     boltBuyBtn.disabled = !player || playerResources < BOLT_COST;
@@ -8120,11 +10020,29 @@ function buyCastleBallista() {
   if (player.resources.resources < BALLISTA_COST) return false;
   player.resources.resources -= BALLISTA_COST;
   player.ballistaCount = 1;
+  player.ballistaLevel = 1;
+  player.ballistaShotsThisTurn = 0;
   updatePlayerResources(castleModalPlayerIndex);
   updateInventory(castleModalPlayerIndex);
   refreshCastleModal(castleModalKey, castleModalPlayerIndex);
   showPickupToast("РљСѓРїР»РµРЅР° Р‘Р°Р»Р»РёСЃС‚Р°.");
   flashPrice(ballistaBuyBtn, BALLISTA_COST, "assets/icons/icon-resources.png", "Р РµСЃСѓСЂСЃС‹");
+  return true;
+}
+
+function upgradeCastleBallista() {
+  if (!castleModalKey || castleModalPlayerIndex === null) return false;
+  const player = players[castleModalPlayerIndex];
+  if (!player || getPlayerBallistaLevel(player) !== 1) return false;
+  if (player.resources.resources < BALLISTA_LEVEL_2_COST) return false;
+  player.resources.resources -= BALLISTA_LEVEL_2_COST;
+  player.ballistaLevel = 2;
+  player.ballistaCount = 1;
+  updatePlayerResources(castleModalPlayerIndex);
+  updateInventory(castleModalPlayerIndex);
+  refreshCastleModal(castleModalKey, castleModalPlayerIndex);
+  showPickupToast("Баллиста улучшена до II уровня.");
+  flashPrice(ballistaUpgradeBtn, BALLISTA_LEVEL_2_COST, "assets/icons/icon-resources.png", "Ресурсы");
   return true;
 }
 
@@ -8246,6 +10164,20 @@ function upgradeCastleLevel() {
         return;
       }
       buyCastleBallista();
+    });
+  }
+  if (ballistaUpgradeBtn) {
+    ballistaUpgradeBtn.addEventListener("click", () => {
+      if (shouldRoutePrivateUiActionToHost(castleModalPlayerIndex)) {
+        emitPrivateUiActionToHost({
+          modalType: "castle",
+          actionType: "upgradeBallista",
+          playerIndex: castleModalPlayerIndex,
+          payload: { key: castleModalKey }
+        });
+        return;
+      }
+      upgradeCastleBallista();
     });
   }
   if (boltBuyBtn) {
@@ -8372,10 +10304,14 @@ function updatePawn(player, index) {
   const viewerIndex = getViewerWorldPlayerIndex();
   const visibleLayer = getVisibleWorldLayer();
   const playerLayer = player.layer || WORLD_LAYER_UPPER;
-  const shouldShow =
-    visibleLayer === WORLD_LAYER_UPPER
-      ? playerLayer === WORLD_LAYER_UPPER
-      : index === viewerIndex && playerLayer === WORLD_LAYER_UNDER;
+  let shouldShow = false;
+  if (visibleLayer === WORLD_LAYER_UPPER) {
+    shouldShow = playerLayer === WORLD_LAYER_UPPER;
+  } else if (visibleLayer === WORLD_LAYER_TROLL_CAVE) {
+    shouldShow = playerLayer === WORLD_LAYER_TROLL_CAVE;
+  } else {
+    shouldShow = index === viewerIndex && playerLayer === WORLD_LAYER_UNDER;
+  }
   const isVisibleToViewer =
     visibleLayer !== WORLD_LAYER_UPPER ||
     playerLayer !== WORLD_LAYER_UPPER ||
@@ -8387,7 +10323,21 @@ function updatePawn(player, index) {
   pawn.style.height = pawnSize + "px";
   pawn.style.borderWidth = Math.max(2, Math.round(pawnSize * 0.06)) + "px";
   pawn.style.fontSize = Math.max(14, Math.round(pawnSize * 0.45)) + "px";
-  const centerX = player.x * cellSize + cellSize / 2;
+  let tavernPawnOffsetX = 0;
+  if (isTavernSafeCell(`${player.x},${player.y}`, playerLayer)) {
+    const tavernOccupants = players
+      .map((candidate, candidateIndex) => ({ candidate, candidateIndex }))
+      .filter(({ candidate }) =>
+        candidate &&
+        (candidate.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_UPPER &&
+        `${candidate.x},${candidate.y}` === TAVERN_CELL_KEY
+      );
+    if (tavernOccupants.length > 1) {
+      const occupantPosition = tavernOccupants.findIndex(entry => entry.candidateIndex === index);
+      tavernPawnOffsetX = (occupantPosition - (tavernOccupants.length - 1) / 2) * cellSize * 0.38;
+    }
+  }
+  const centerX = player.x * cellSize + cellSize / 2 + tavernPawnOffsetX;
   const centerY = player.y * cellSize + cellSize / 2;
   pawn.style.left = centerX + "px";
   pawn.style.top  = centerY + "px";
@@ -8434,6 +10384,7 @@ const TURN_BLOCKING_MODALS = [
   () => messengerModal,
   () => guardModal,
   () => robberModal,
+  () => playerBattleCardModal,
   () => battleModal,
   () => cityModal,
   () => mageModal,
@@ -8441,6 +10392,9 @@ const TURN_BLOCKING_MODALS = [
   () => stoneResultModal,
   () => trollCaveModal,
   () => masterModal,
+  () => tavernModal,
+  () => tavernWheelModal,
+  () => tavernDragonModal,
   () => castleModal
 ];
 
@@ -8523,6 +10477,7 @@ function updateEndTurnButton() {
     (!pendingTurnAdvance && !hasDeferredRemoteModal && !hasPreparedModalTurn) ||
     !canLocalPlayerAct() ||
     hasBlockingTurnModalOpen() ||
+    harpoonAnimationInFlight ||
     gameEnded;
   endTurnBtn.classList.toggle("turn-ready", (pendingTurnAdvance || hasPreparedModalTurn) && !endTurnBtn.disabled);
 }
@@ -8581,18 +10536,35 @@ function completeTurnAdvance() {
     pushDebugLog(`completeTurnAdvance:p${currentPlayerIndex}:bti=${blockingModalTurnPlayerIndex}:pta=${pendingTurnAdvance}:ptmo=${pendingTurnManualOnly}`);
   }
   blockingModalTurnPlayerIndex = null;
+  playerBattleRevealState = null;
   pendingTurnAdvance = false;
   pendingTurnManualOnly = false;
   pendingTurnRequiresManualConfirm = false;
   if (typeof deferredPrivateTurnPlayerIndex !== "undefined") {
     deferredPrivateTurnPlayerIndex = null;
   }
+  // Существа верхнего мира используют DOM-клетки при поиске пути.
+  // На время общего тика восстанавливаем верхний слой; в конце хода refresh вернёт нужную локацию.
+  if (getVisibleWorldLayer() !== WORLD_LAYER_UPPER) {
+    renderUpperWorldView();
+  }
   ballistaModePlayerIndex = null;
+  ballistaShotInFlight = false;
+  harpoonModePlayerIndex = null;
+  harpoonAnimationInFlight = false;
+  if (players[currentPlayerIndex]) {
+    players[currentPlayerIndex].ballistaShotsThisTurn = 0;
+    players[currentPlayerIndex].tavernWheelPlaysThisTurn = 0;
+    players[currentPlayerIndex].tavernDragonPlaysThisTurn = 0;
+  }
   voidShardModePlayerIndex = null;
   tickAllTimedBuffs();
   collectCastleIncomes(currentPlayerIndex);
   turnCounter += 1;
   const currentTOD = getTimeOfDay().key;
+  if (currentTOD !== prevTimeOfDayKey && currentTOD === "morning") {
+    clearTrollCaveResourceLootForMorning({ refresh: false });
+  }
   if (currentTOD !== prevTimeOfDayKey && currentTOD === "day") {
     rollDayBuffs();
   }
@@ -8721,6 +10693,7 @@ function completeTurnAdvance() {
 
 function tryFinishPendingTurn(manual = false) {
   if (!pendingTurnAdvance) return false;
+  if (harpoonAnimationInFlight) return false;
   if (pendingTurnRequiresManualConfirm && !manual) return false;
   if (!manual && pendingTurnManualOnly) return false;
   if (hasBlockingTurnModalOpen() || hasDeferredPrivateTurnBlock() || isKingAuctionBlockingGameplay() || isKingGenerosityBlockingGameplay()) {
@@ -8764,6 +10737,7 @@ function requestTurnAdvance(options = {}) {
 function tickAllTimedBuffs() {
   players.forEach(player => {
     if (!player) return;
+    const beerEffectStartedThisTurn = player.beerEffectStartedTurn === turnCounter;
     if (player.slowTurnsRemaining > 0) {
       player.slowTurnsRemaining = Math.max(0, player.slowTurnsRemaining - 1);
     }
@@ -8779,6 +10753,14 @@ function tickAllTimedBuffs() {
     if (player.luckTurnsRemaining > 0) {
       player.luckTurnsRemaining = Math.max(0, player.luckTurnsRemaining - 1);
     }
+    // Оглушение тролля считается по всем завершённым ходам, включая дубли соперника
+    // и пропущенный ход самого оглушённого игрока.
+    if (player.stunSource === "troll" && (player.stunnedTurnsRemaining || 0) > 0) {
+      player.stunnedTurnsRemaining = Math.max(0, player.stunnedTurnsRemaining - 1);
+      if (player.stunnedTurnsRemaining === 0) {
+        player.stunSource = null;
+      }
+    }
     if ((player.builderAmuletCount || 0) > 0) {
       player.builderAmuletTurnCounter = (player.builderAmuletTurnCounter || 0) + 1;
       if (player.builderAmuletTurnCounter >= 25) {
@@ -8791,11 +10773,28 @@ function tickAllTimedBuffs() {
         }
       }
     }
-    if (player.invulnTurnsRemaining > 0) {
+    if (player.invulnTurnsRemaining > 0 && !beerEffectStartedThisTurn) {
       player.invulnTurnsRemaining = Math.max(0, player.invulnTurnsRemaining - 1);
     }
     if (player.stoneSpeedTurnsRemaining > 0) {
       player.stoneSpeedTurnsRemaining = Math.max(0, player.stoneSpeedTurnsRemaining - 1);
+    }
+    if (beerEffectStartedThisTurn) {
+      player.beerEffectStartedTurn = null;
+    } else if ((player.beerProtectionTurnsRemaining || 0) > 0) {
+      player.beerProtectionTurnsRemaining = Math.max(0, player.beerProtectionTurnsRemaining - 1);
+      if (player.beerProtectionTurnsRemaining === 0) {
+        player.beerSlowTurnsRemaining = TAVERN_BEER_SLOW_TURNS;
+        const playerIndex = players.indexOf(player);
+        if (playerIndex >= 0) {
+          showPrivatePickupToastForPlayer(
+            playerIndex,
+            `Неприкосновенность от пива закончилась: −${TAVERN_BEER_SLOW_PENALTY} к броску на ${TAVERN_BEER_SLOW_TURNS} ходов.`
+          );
+        }
+      }
+    } else if ((player.beerSlowTurnsRemaining || 0) > 0) {
+      player.beerSlowTurnsRemaining = Math.max(0, player.beerSlowTurnsRemaining - 1);
     }
   });
 }
@@ -8843,8 +10842,9 @@ function drawReachableOutline() {
   if (reachableKeys.size === 0) return;
   if (movesRemaining <= 0) return;
   const svg = getReachableOutlineSvg();
-  svg.setAttribute("width", COLS * cellSize);
-  svg.setAttribute("height", ROWS * cellSize);
+  const dimensions = getVisibleWorldDimensions();
+  svg.setAttribute("width", dimensions.cols * cellSize);
+  svg.setAttribute("height", dimensions.rows * cellSize);
   const player = players[currentPlayerIndex];
   if (!player) return;
   const color = player.color || "#ffffff";
@@ -8877,8 +10877,8 @@ function drawReachableOutline() {
 }
 
 function clearReachable() {
-  document.querySelectorAll(".cell.reachable").forEach(cell => {
-    cell.classList.remove("reachable");
+  document.querySelectorAll(".cell.reachable, .cell.harpoon-target").forEach(cell => {
+    cell.classList.remove("reachable", "harpoon-target");
   });
   reachableKeys.forEach(key => {
     const cell = grid[key];
@@ -8898,6 +10898,10 @@ const MOVES_DIRS = [
 function showReachable() {
   clearReachable();
   if (ballistaModePlayerIndex === currentPlayerIndex) return;
+  if (harpoonModePlayerIndex === currentPlayerIndex) {
+    showHarpoonTargets(currentPlayerIndex);
+    return;
+  }
   if (bridgeModePlayerIndex === currentPlayerIndex) {
     showBridgeTargets(currentPlayerIndex);
     return;
@@ -8905,6 +10909,36 @@ function showReachable() {
   if (movesRemaining <= 0) return;
   const revealCells = shouldRevealReachableCells();
   const currentPlayer = players[currentPlayerIndex];
+  if ((currentPlayer?.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_TROLL_CAVE) {
+    const trollInteriorKey =
+      typeof isTrollInCave === "function" && isTrollInCave()
+        ? trollState?.interiorKey
+        : null;
+    const queue = [{ x: currentPlayer.x, y: currentPlayer.y, steps: 0 }];
+    const visited = new Set([`${currentPlayer.x},${currentPlayer.y}`]);
+    while (queue.length) {
+      const { x, y, steps } = queue.shift();
+      const key = `${x},${y}`;
+      if (steps > 0) {
+        const cell = grid[key];
+        if (cell) {
+          reachableKeys.add(key);
+          if (revealCells) cell.classList.add("reachable");
+        }
+      }
+      if (steps === movesRemaining) continue;
+      for (const { dx, dy } of MOVES_DIRS) {
+        const nx = x + dx;
+        const ny = y + dy;
+        const nextKey = `${nx},${ny}`;
+        if (visited.has(nextKey) || isTrollCaveCellBlocked(nx, ny) || nextKey === trollInteriorKey) continue;
+        visited.add(nextKey);
+        queue.push({ x: nx, y: ny, steps: steps + 1 });
+      }
+    }
+    drawReachableOutline();
+    return;
+  }
   if ((currentPlayer?.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_UNDER) {
     const queue = [{x: currentPlayer.x, y: currentPlayer.y, steps: 0}];
     const visited = new Set([`${currentPlayer.x},${currentPlayer.y}`]);
@@ -8978,6 +11012,27 @@ function finalizeMove(gridX, gridY) {
   movesRemaining = 0;
   clearReachable();
   updatePawns();
+
+  if ((currentPlayer.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_TROLL_CAVE) {
+    if (getTrollCaveCellNumber(gridX, gridY) === TROLL_CAVE_PIT_CELL_NUMBER) {
+      enterUnderworld(currentPlayerIndex, {
+        consumeUpperWormhole: false,
+        sourceLabel: "Яма в пещере троллей утащила вас на нижний уровень."
+      });
+      endTurn();
+      return;
+    }
+    const entranceIndex = getTrollCaveEntranceIndexByKey(key);
+    if (entranceIndex >= 0) {
+      exitTrollCave(currentPlayerIndex, entranceIndex);
+      endTurn();
+      return;
+    }
+    collectTrollCaveLoot(currentPlayerIndex, key);
+    refreshVisibleWorld();
+    endTurn();
+    return;
+  }
 
   if ((currentPlayer.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_UNDER) {
     const underworldState = getPlayerUnderworldState(currentPlayerIndex);
@@ -9082,6 +11137,11 @@ function finalizeMove(gridX, gridY) {
       showCastleModal(castleKey, currentPlayerIndex);
     }
   }
+  if (node && node.type === "tavern") {
+    openTavernModal(currentPlayerIndex);
+    endTurn();
+    return;
+  }
   const dragonKey = getDragonBaseKeyForPos(gridX, gridY);
   if (dragonKey) {
     if (!currentPlayer.hasSword) {
@@ -9109,7 +11169,10 @@ function finalizeMove(gridX, gridY) {
     endTurn();
     return;
   }
-  const trollHere = typeof isTrollAtKey === "function" && isTrollAtKey(key);
+  const trollHere =
+    specialByPos[key]?.type !== "troll-cave" &&
+    typeof isTrollAtKey === "function" &&
+    isTrollAtKey(key);
   if (trollHere) {
     if (currentPlayer.invisTurnsRemaining > 0) {
       showPickupToast("Невидимость: тролли вас не атакуют.");
@@ -9117,27 +11180,9 @@ function finalizeMove(gridX, gridY) {
       const trollArmy = getTimeOfDay().key === "evening" ? 20 : 25;
       const battleResult = resolveTrollBattle(currentPlayerIndex, trollArmy);
       const playerWon = battleResult && battleResult.winnerIndex === currentPlayerIndex;
-      const caveIndex = typeof getTrollCaveIndexByKey === "function" ? getTrollCaveIndexByKey(key) : -1;
       if (playerWon) {
         if (typeof handleTrollDefeat === "function") {
           handleTrollDefeat();
-        }
-        if (caveIndex >= 0) {
-          const alreadyLooted = TROLL_CAVES && TROLL_CAVES[caveIndex]?.looted;
-          const isMorning = getTimeOfDay().key === "morning";
-          if (!alreadyLooted && !isMorning) {
-            const lootText = rollTrollCaveLoot(currentPlayerIndex);
-            if (typeof markTrollCaveLooted === "function") {
-              markTrollCaveLooted(caveIndex, true);
-            }
-            showBattleModal(battleResult);
-            if (lootText && typeof trollCaveModal !== "undefined" && typeof trollCaveText !== "undefined") {
-              trollCaveText.textContent = lootText;
-              trollCaveModal.style.display = "flex";
-            }
-            endTurn();
-            return;
-          }
         }
       }
       showBattleModal(battleResult);
@@ -9170,25 +11215,10 @@ function finalizeMove(gridX, gridY) {
     return;
   }
   if (specialEntry && specialEntry.type === "troll-cave") {
-    const trollInCave = typeof isTrollInCaveAtKey === "function" && isTrollInCaveAtKey(key);
-    if (!trollInCave) {
-      const caveIndex = typeof getTrollCaveIndexByKey === "function" ? getTrollCaveIndexByKey(key) : -1;
-      const alreadyLooted = caveIndex >= 0 && TROLL_CAVES && TROLL_CAVES[caveIndex]?.looted;
-      const isMorning = getTimeOfDay().key === "morning";
-      if (alreadyLooted || isMorning) {
-        openTrollCaveModal("\u041f\u0435\u0449\u0435\u0440\u0430 \u043f\u0443\u0441\u0442\u0430.", currentPlayerIndex);
-      } else {
-        const lootText = rollTrollCaveLoot(currentPlayerIndex);
-        if (caveIndex >= 0 && typeof markTrollCaveLooted === "function") {
-          markTrollCaveLooted(caveIndex, true);
-        }
-        if (lootText) {
-          openTrollCaveModal(lootText, currentPlayerIndex);
-        }
-      }
-      endTurn();
-      return;
-    }
+    const caveIndex = typeof getTrollCaveIndexByKey === "function" ? getTrollCaveIndexByKey(key) : -1;
+    enterTrollCave(currentPlayerIndex, caveIndex);
+    endTurn();
+    return;
   }
   if (specialEntry && specialEntry.type === "mage") {
     const mageSlot = getMageSlotById(specialEntry.mageId);
@@ -9251,7 +11281,16 @@ function finalizeMove(gridX, gridY) {
       endTurn();
       return;
     }
-    let amount = Math.floor(Math.random() * (type.max - type.min + 1)) + type.min;
+    let pickupMinimum = type.min;
+    let pickupMaximum = type.max;
+    if (type.key === "army") {
+      if (turnCounter >= 225) {
+        [pickupMinimum, pickupMaximum] = ARMY_RESOURCE_LATE_GAME_RANGE;
+      } else if (turnCounter >= 150) {
+        [pickupMinimum, pickupMaximum] = ARMY_RESOURCE_MID_GAME_RANGE;
+      }
+    }
+    let amount = Math.floor(Math.random() * (pickupMaximum - pickupMinimum + 1)) + pickupMinimum;
     if (type.key !== "army") {
       if (turnCounter >= 225) {
         amount = Math.floor(amount * 2.5);
@@ -9449,14 +11488,23 @@ function doRoll() {
     extraTurnPending = false;
     extraTurnReason = null;
     justRolledDouble = false;
-    currentPlayer.stunnedTurnsRemaining = Math.max(0, (currentPlayer.stunnedTurnsRemaining || 0) - 1);
-    if (currentPlayer.stunnedTurnsRemaining <= 0) {
-      currentPlayer.stunSource = null;
+    currentPlayer.ballistaShotsThisTurn = 0;
+    currentPlayer.tavernWheelPlaysThisTurn = 0;
+    currentPlayer.tavernDragonPlaysThisTurn = 0;
+    // Ловушка по-прежнему считает личные пропуски. Троллье оглушение уменьшится
+    // ниже в общем тике, как и после любого обычного или дополнительного хода.
+    if (currentPlayer.stunSource !== "troll") {
+      currentPlayer.stunnedTurnsRemaining = Math.max(0, (currentPlayer.stunnedTurnsRemaining || 0) - 1);
+      if (currentPlayer.stunnedTurnsRemaining <= 0) {
+        currentPlayer.stunSource = null;
+      }
     }
     tickAllTimedBuffs();
     currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+    refreshVisibleWorld();
     updateTurnUI();
     players.forEach((_, idx) => updatePlayerResources(idx));
+    if (typeof emitStateNow === "function") emitStateNow(true);
     scheduleAutoRoll();
     return;
   }
@@ -9487,7 +11535,10 @@ function doRoll() {
   const slowPenalty = currentPlayer && currentPlayer.slowTurnsRemaining > 0 ? MAGE_SLOW_PENALTY : 0;
   const kingConcernPenalty = getKingConcernPenalty(currentPlayerIndex);
   const nightPenalty = getTimeOfDay().key === "night" ? 2 : 0;
-  const penalty = slowPenalty + kingConcernPenalty + nightPenalty;
+  const beerSlowPenalty = currentPlayer && currentPlayer.beerSlowTurnsRemaining > 0
+    ? TAVERN_BEER_SLOW_PENALTY
+    : 0;
+  const penalty = slowPenalty + kingConcernPenalty + nightPenalty + beerSlowPenalty;
   let effectiveMoves = roll;
   if (penalty > 0 && currentPlayer) {
     effectiveMoves = Math.max(0, roll - penalty);
@@ -9511,7 +11562,9 @@ function doRoll() {
   }
   if (effectiveMoves <= 0) {
     movesRemaining = 0;
-    if (slowPenalty > 0 && kingConcernPenalty > 0) {
+    if (beerSlowPenalty > 0) {
+      showPickupToast("Пивное замедление лишило вас очков движения — ход пропущен.");
+    } else if (slowPenalty > 0 && kingConcernPenalty > 0) {
       showPickupToast("Маг и опасение короля замедлили вас — ход пропущен.");
     } else if (kingConcernPenalty > 0) {
       showPickupToast("Опасение короля замедлило вас — ход пропущен.");
@@ -9538,6 +11591,11 @@ if (endTurnBtn) {
 }
 function resetGameState() {
   gameEnded = false;
+  resetTavernRuntimeState();
+  ballistaModePlayerIndex = null;
+  ballistaShotInFlight = false;
+  harpoonModePlayerIndex = null;
+  harpoonAnimationInFlight = false;
   gameWinnerIndex = null;
   worldDangerShown = false;
   robberEvent = null;
@@ -9546,6 +11604,15 @@ function resetGameState() {
   robbersEnabled = false;
   lastBattleResult = null;
   lastBattleId = 0;
+  pendingPlayerBattle = null;
+  playerBattleSequenceId = 0;
+  playerBattleRevealState = null;
+  localPlayerBattleSelection = null;
+  if (playerBattleResolveTimer) {
+    clearTimeout(playerBattleResolveTimer);
+    playerBattleResolveTimer = null;
+  }
+  closePlayerBattleCardModal();
   testModeEnabled = false;
   scheduledWorldEvents = [];
   scheduledRoyalMessengerTurns = [];
@@ -9582,6 +11649,7 @@ function resetGameState() {
     player.y = startY;
     player.layer = WORLD_LAYER_UPPER;
     player.underworldState = null;
+    player.trollCaveEntranceIndex = null;
     player.resources.gold = 0;
     player.resources.army = 0;
     player.resources.influence = 0;
@@ -9613,7 +11681,10 @@ function resetGameState() {
     player.tokenCount = 0;
     player.bootsCount = 0;
     player.ballistaCount = 0;
+    player.ballistaLevel = 0;
+    player.ballistaShotsThisTurn = 0;
     player.boltCount = 0;
+    player.harpoonCount = 0;
     player.ringCount = 0;
     player.terrorRingCount = 0;
     player.rainbowStoneCount = 0;
@@ -9628,6 +11699,11 @@ function resetGameState() {
     player.werewolfFangCount = 0;
     player.trapStunCount = 0;
     player.bridgeCount = 0;
+    player.beerProtectionTurnsRemaining = 0;
+    player.beerSlowTurnsRemaining = 0;
+    player.beerEffectStartedTurn = null;
+    player.tavernWheelPlaysThisTurn = 0;
+    player.tavernDragonPlaysThisTurn = 0;
     player.stoneBonusRollsRemaining = 0;
     player.stoneSpeedTurnsRemaining = 0;
     player.stunnedTurnsRemaining = 0;
@@ -9642,6 +11718,7 @@ function resetGameState() {
   bridgeOpenedKeys.clear();
   bridgeModePlayerIndex = null;
   voidShardModePlayerIndex = null;
+  harpoonModePlayerIndex = null;
   if (typeof trapStunIdCounter !== "undefined") {
     trapStunIdCounter = 1;
   }
@@ -9802,6 +11879,7 @@ function resetGameState() {
   if (typeof TROLL_CAVES !== "undefined") {
     TROLL_CAVES.forEach(cave => (cave.looted = false));
   }
+  trollCaveInteriorState = { generation: 0, sourceCaveIndex: null, lootByPos: {} };
   if (typeof initTrollState === "function") initTrollState();
 
   gameTimerSeconds = 0;
@@ -9847,9 +11925,11 @@ function relayout() {
   const summaryHeight = summaryBar ? summaryBar.getBoundingClientRect().height : 0;
   const availableH = Math.max(0, viewportH - bodyPadding * 2 - summaryHeight - gap * 2);
 
-  const sizeByWidth = availableW > 0 ? availableW / COLS : MIN_CELL;
-  const sizeByHeight = availableH > 0 ? availableH / ROWS : MIN_CELL;
-  const nextSize = Math.floor(Math.min(sizeByWidth, sizeByHeight, MAX_CELL));
+  const dimensions = getVisibleWorldDimensions();
+  const sizeByWidth = availableW > 0 ? availableW / dimensions.cols : MIN_CELL;
+  const sizeByHeight = availableH > 0 ? availableH / dimensions.rows : MIN_CELL;
+  const viewZoom = getVisibleWorldLayer() === WORLD_LAYER_TROLL_CAVE ? TROLL_CAVE_VIEW_ZOOM : 1;
+  const nextSize = Math.floor(Math.min(Math.min(sizeByWidth, sizeByHeight) * viewZoom, MAX_CELL));
   const clamped = Math.max(MIN_CELL, nextSize);
 
   applyCellSize(clamped);

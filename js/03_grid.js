@@ -89,9 +89,40 @@ const masterBuyToken = document.getElementById("masterBuyToken");
 const masterBuyGoldRainbow = document.getElementById("masterBuyGoldRainbow");
 const masterBuyTerrorRing = document.getElementById("masterBuyTerrorRing");
 const masterCloseBtn = document.getElementById("masterCloseBtn");
+const tavernModal = document.getElementById("tavernModal");
+const tavernGoldValue = document.getElementById("tavernGoldValue");
+const tavernStatus = document.getElementById("tavernStatus");
+const tavernDrinkBeerBtn = document.getElementById("tavernDrinkBeerBtn");
+const tavernWheelBtn = document.getElementById("tavernWheelBtn");
+const tavernDragonBtn = document.getElementById("tavernDragonBtn");
+const tavernCloseBtn = document.getElementById("tavernCloseBtn");
+const tavernWheelModal = document.getElementById("tavernWheelModal");
+const tavernFortuneWheel = document.getElementById("tavernFortuneWheel");
+const tavernWheelGoldValue = document.getElementById("tavernWheelGoldValue");
+const tavernWheelPlaysValue = document.getElementById("tavernWheelPlaysValue");
+const tavernWheelBetInput = document.getElementById("tavernWheelBetInput");
+const tavernWheelColorButtons = Array.from(document.querySelectorAll("[data-tavern-wheel-color]"));
+const tavernWheelSpinBtn = document.getElementById("tavernWheelSpinBtn");
+const tavernWheelStatus = document.getElementById("tavernWheelStatus");
+const tavernWheelBackBtn = document.getElementById("tavernWheelBackBtn");
+const tavernDragonModal = document.getElementById("tavernDragonModal");
+const tavernDragonGoldValue = document.getElementById("tavernDragonGoldValue");
+const tavernDragonPlaysValue = document.getElementById("tavernDragonPlaysValue");
+const tavernDragonBetInput = document.getElementById("tavernDragonBetInput");
+const tavernDragonStartBtn = document.getElementById("tavernDragonStartBtn");
+const tavernDragonCashoutBtn = document.getElementById("tavernDragonCashoutBtn");
+const tavernDragonStatus = document.getElementById("tavernDragonStatus");
+const tavernDragonBackBtn = document.getElementById("tavernDragonBackBtn");
+const dragonCrashStage = document.getElementById("dragonCrashStage");
+const dragonCrashSprite = document.getElementById("dragonCrashSprite");
+const dragonCrashMultiplier = document.getElementById("dragonCrashMultiplier");
 const battleModal = document.getElementById("battleModal");
 const battleSummary = document.getElementById("battleSummary");
 const battleClose = document.getElementById("battleClose");
+const playerBattleCardModal = document.getElementById("playerBattleCardModal");
+const playerBattleCardTitle = document.getElementById("playerBattleCardTitle");
+const playerBattleCardStatus = document.getElementById("playerBattleCardStatus");
+const playerBattleCards = document.getElementById("playerBattleCards");
 const worldEventModal = document.getElementById("worldEventModal");
 const worldEventTitle = document.getElementById("worldEventTitle");
 const worldEventText = document.getElementById("worldEventText");
@@ -123,6 +154,7 @@ const castleDepositBtn = document.getElementById("castleDepositBtn");
 const castleStorageDisplay = document.querySelector("[data-castle-storage]");
 const castleWithdrawArmy = document.querySelector("[data-castle-army]");
 const ballistaBuyBtn = document.getElementById("ballistaBuyBtn");
+const ballistaUpgradeBtn = document.getElementById("ballistaUpgradeBtn");
 const boltBuyBtn = document.getElementById("boltBuyBtn");
 const trapStunBuyBtn = document.getElementById("trapStunBuyBtn");
 const bridgeBuyBtn = document.getElementById("bridgeBuyBtn");
@@ -146,10 +178,13 @@ const grid = {};
 
 function applyCellSize(size) {
   cellSize = size;
+  const dimensions = typeof getVisibleWorldDimensions === "function"
+    ? getVisibleWorldDimensions()
+    : { cols: COLS, rows: ROWS };
   document.documentElement.style.setProperty("--cell-size", `${cellSize}px`);
   document.documentElement.style.setProperty("--cell-font", `${Math.max(10, Math.round(cellSize * 0.25))}px`);
-  game.style.width = (COLS * cellSize) + "px";
-  game.style.height = (ROWS * cellSize) + "px";
+  game.style.width = (dimensions.cols * cellSize) + "px";
+  game.style.height = (dimensions.rows * cellSize) + "px";
 
   const dragonCell = document.querySelector(".dragon-2x2");
   if (dragonCell) {

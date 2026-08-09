@@ -381,6 +381,7 @@
         <li><button type="button" class="trade-btn" data-workshop-buy="armor"><span class="trade-main">Покупка: Доспехи (+7 атаки)</span><span class="trade-price"><img class="price-icon" src="assets/icons/icon-gold.png" alt="Золото" />Цена: 1500 золота</span></button></li>
         <li><button type="button" class="trade-btn" data-workshop-buy="sword"><span class="trade-main">Покупка: Меч (+12 атаки)</span><span class="trade-price"><img class="price-icon" src="assets/icons/icon-gold.png" alt="Золото" />Цена: 2500 золота</span></button></li>
         <li><button type="button" class="trade-btn" data-workshop-buy="hero-sword"><span class="trade-main">Покупка: Меч героя</span><span class="trade-price"><img class="price-icon" src="assets/icons/icon-gold.png" alt="Золото" />Цена: 5000 золота + <img class="price-icon" src="assets/icons/rainbow_stone.png" alt="Радужный камень" />Радужный камень + <img class="price-icon" src="assets/icons/hero_hilt.png" alt="Рукоять" />Рукоять</span></button></li>
+        <li><button type="button" class="trade-btn" data-workshop-buy="harpoon"><span class="trade-main"><img class="price-icon" src="assets/icons/harpoon.png" alt="" />Покупка: Горпун</span><span class="trade-price"><img class="price-icon" src="assets/icons/icon-gold.png" alt="Золото" />Цена: 1000 золота + <img class="price-icon" src="assets/icons/icon-resources.png" alt="Ресурсы" />500 ресурсов</span></button></li>
         <li><button type="button" class="trade-btn" data-workshop-buy="rainbow-infl"><span class="trade-main">Покупка: 300 влияния</span><span class="trade-price"><img class="price-icon" src="assets/icons/rainbow_stone.png" alt="Радужный камень" />Цена: Радужный камень</span></button></li>
         <li><button type="button" class="trade-btn" data-workshop-buy="castle-armor" id="workshopCastleArmorBtn"><span class="trade-main">Покупка: Укрепить замок (+50 брони)</span><span class="trade-price"><img class="price-icon" src="assets/icons/icon-gold.png" alt="Золото" />Цена: 1500 золота</span></button></li>
       </ul>
@@ -472,6 +473,15 @@
     <h3>ИТОГИ БОЯ</h3>
     <div id="battleSummary"></div>
     <button id="battleClose">Закрыть</button>
+  </div>
+</div>
+
+<div id="playerBattleCardModal" role="dialog" aria-modal="true" aria-labelledby="playerBattleCardTitle">
+  <div class="player-battle-card-shell">
+    <div class="player-battle-card-eyebrow">Тайный боевой манёвр</div>
+    <h3 id="playerBattleCardTitle">Выберите карту</h3>
+    <p id="playerBattleCardStatus">Соперник не увидит ваш выбор до одновременного раскрытия.</p>
+    <div id="playerBattleCards" class="player-battle-card-grid"></div>
   </div>
 </div>
 
@@ -662,6 +672,86 @@
   </div>
 </div>
 
+<div id="tavernModal" class="tavern-modal-layer" role="dialog" aria-modal="true" aria-labelledby="tavernTitle">
+  <div class="tavern-card tavern-main-card">
+    <div class="tavern-ornament" aria-hidden="true">◆</div>
+    <p class="tavern-eyebrow">Тёплый свет • дубовые столы • честная удача</p>
+    <h2 id="tavernTitle">Таверна «Старый Дракон»</h2>
+    <p class="tavern-lead">Отдохните с кружкой пива или испытайте удачу за игровым столом.</p>
+    <div class="tavern-balance">Доступно золота: <strong id="tavernGoldValue">0</strong></div>
+    <div class="tavern-menu-actions">
+      <button id="tavernDrinkBeerBtn" type="button" class="tavern-action-card">
+        <span class="tavern-action-icon" aria-hidden="true">🍺</span>
+        <span><strong>Выпить Пиво</strong><small>250 золота • 6 ходов неприкосновенности, затем 10 ходов −4 к броску</small></span>
+      </button>
+      <button id="tavernWheelBtn" type="button" class="tavern-action-card">
+        <span class="tavern-action-icon" aria-hidden="true">◉</span>
+        <span><strong>Колесо фортуны</strong><small>Красное или чёрное • до 3 игр за ход</small></span>
+      </button>
+      <button id="tavernDragonBtn" type="button" class="tavern-action-card">
+        <span class="tavern-action-icon" aria-hidden="true">🐉</span>
+        <span><strong>Игра в Дракончика</strong><small>Успейте снять ставку до краша • до 2 игр за ход</small></span>
+      </button>
+    </div>
+    <p id="tavernStatus" class="tavern-status" aria-live="polite"></p>
+    <button id="tavernCloseBtn" type="button" class="tavern-secondary-btn">Покинуть таверну</button>
+  </div>
+</div>
+
+<div id="tavernWheelModal" class="tavern-modal-layer" role="dialog" aria-modal="true" aria-labelledby="tavernWheelTitle">
+  <div class="tavern-card tavern-game-card">
+    <p class="tavern-eyebrow">Красное или чёрное</p>
+    <h2 id="tavernWheelTitle">Колесо фортуны</h2>
+    <div class="fortune-stage">
+      <div class="fortune-pointer" aria-hidden="true"></div>
+      <div id="tavernFortuneWheel" class="fortune-wheel" aria-label="Колесо с красными и чёрными полями">
+        <div class="fortune-wheel-hub">◆</div>
+      </div>
+    </div>
+    <div class="tavern-game-meta">
+      <span>Золото: <strong id="tavernWheelGoldValue">0</strong></span>
+      <span>Попытки: <strong id="tavernWheelPlaysValue">0 / 3</strong></span>
+    </div>
+    <label class="tavern-bet-field">
+      <span>Сумма ставки</span>
+      <input id="tavernWheelBetInput" type="number" min="1" step="1" inputmode="numeric" placeholder="Введите ставку" />
+    </label>
+    <div class="fortune-color-choice" role="group" aria-label="Цвет ставки">
+      <button type="button" data-tavern-wheel-color="red" class="fortune-color-btn is-red">Красное</button>
+      <button type="button" data-tavern-wheel-color="black" class="fortune-color-btn is-black">Чёрное</button>
+    </div>
+    <button id="tavernWheelSpinBtn" type="button" class="tavern-primary-btn">Крутить</button>
+    <p id="tavernWheelStatus" class="tavern-status" aria-live="polite">Выберите цвет и укажите ставку.</p>
+    <button id="tavernWheelBackBtn" type="button" class="tavern-secondary-btn">Назад в таверну</button>
+  </div>
+</div>
+
+<div id="tavernDragonModal" class="tavern-modal-layer" role="dialog" aria-modal="true" aria-labelledby="tavernDragonTitle">
+  <div class="tavern-card tavern-game-card dragon-game-card">
+    <p class="tavern-eyebrow">Не будите дракона слишком долго</p>
+    <h2 id="tavernDragonTitle">Игра в Дракончика</h2>
+    <div id="dragonCrashStage" class="dragon-crash-stage">
+      <div class="dragon-flight-path" aria-hidden="true"></div>
+      <div id="dragonCrashSprite" class="dragon-crash-sprite" aria-hidden="true">🐉</div>
+      <strong id="dragonCrashMultiplier" class="dragon-crash-multiplier">1.00×</strong>
+    </div>
+    <div class="tavern-game-meta">
+      <span>Золото: <strong id="tavernDragonGoldValue">0</strong></span>
+      <span>Игры: <strong id="tavernDragonPlaysValue">0 / 2</strong></span>
+    </div>
+    <label class="tavern-bet-field">
+      <span>Сумма ставки</span>
+      <input id="tavernDragonBetInput" type="number" min="1" step="1" inputmode="numeric" placeholder="Введите ставку" />
+    </label>
+    <div class="dragon-game-actions">
+      <button id="tavernDragonStartBtn" type="button" class="tavern-primary-btn">Запустить дракончика</button>
+      <button id="tavernDragonCashoutBtn" type="button" class="tavern-cashout-btn" disabled>Снять выигрыш</button>
+    </div>
+    <p id="tavernDragonStatus" class="tavern-status" aria-live="polite">Сделайте ставку и следите за коэффициентом.</p>
+    <button id="tavernDragonBackBtn" type="button" class="tavern-secondary-btn">Назад в таверну</button>
+  </div>
+</div>
+
 <div id="pauseOverlay">
   <div class="guard-card">
     <h3>Игра приостановлена</h3>
@@ -764,10 +854,19 @@
       <div class="castle-feature-row">
         <div>
           <strong>Баллиста</strong>
-          <div class="castle-feature-sub">1 шт., урон 9-13 войск</div>
+          <div class="castle-feature-sub">1 шт., урон 13–17 войск</div>
         </div>
         <div class="castle-feature-actions">
           <button id="ballistaBuyBtn" class="castle-buy-btn"><span>600</span><img class="price-icon" src="assets/icons/icon-resources.png" alt="Ресурсы" /></button>
+        </div>
+      </div>
+      <div class="castle-feature-row">
+        <div>
+          <strong>Баллиста II</strong>
+          <div class="castle-feature-sub">Первый выстрел сохраняет ход: можно переместиться или выстрелить ещё раз</div>
+        </div>
+        <div class="castle-feature-actions">
+          <button id="ballistaUpgradeBtn" class="castle-buy-btn"><span>1000</span><img class="price-icon" src="assets/icons/icon-resources.png" alt="Ресурсы" /></button>
         </div>
       </div>
       <div class="castle-feature-row">

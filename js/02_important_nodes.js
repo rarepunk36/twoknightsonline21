@@ -2,6 +2,7 @@
 //   ВАЖНЫЕ ТОЧКИ (те, что были в твоём скриншоте)
 // ────────────────────────────────────────
 const importantNodes = [
+  {id: 21, type: "tavern", label: "", x: 1, y: 1},
   {id:  2, type: "barracks", label: "КАЗ", x: 24, y: 19},
   {id: 17, type: "castle",   x: 26, y:  4},
 

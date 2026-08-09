@@ -180,6 +180,7 @@ function restoreImportantNodeCell(key, cell) {
     cell.textContent = "";
     setCellIcon(cell, iconDef.file, iconDef.alt);
   }
+  if (node.id === 21) cell.classList.add("tavern-node");
   if (node.type === "castle") {
     const ownerIndex = castleOwnersByKey[key];
     const owner = typeof ownerIndex === "number" ? players?.[ownerIndex] : null;
@@ -210,7 +211,8 @@ const ICONS_BY_ID = {
   15: { file: "king.png", alt: "КОР" },
   17: { file: "castle_17.png", alt: "Замок" },
   19: { file: "workshop.png", alt: "МАС" },
-  20: { file: "guard.png", alt: "СТ" }
+  20: { file: "guard.png", alt: "СТ" },
+  21: { file: "tavern.png", alt: "Таверна" }
 };
 importantNodes.forEach(node => {
   const key = `${node.x},${node.y}`;
@@ -230,6 +232,7 @@ importantNodes.forEach(node => {
     if (node.id === 2) cell.classList.add("barracks-node");
     if (node.id === 9) cell.classList.add("shop-node");
     if (node.id === 19) cell.classList.add("workshop-node");
+    if (node.id === 21) cell.classList.add("tavern-node");
     const iconDef = ICONS_BY_ID[node.id];
     if (iconDef) {
       cell.textContent = "";
@@ -260,6 +263,8 @@ const resourceTypes = [
   {key: "army", label: "В", min: 5, max: 8},
   {key: "resources", label: "Р", min: 50, max: 75}
 ];
+const ARMY_RESOURCE_MID_GAME_RANGE = [10, 18];
+const ARMY_RESOURCE_LATE_GAME_RANGE = [18, 27];
 const RESOURCE_ICONS = {
   gold: { file: "gold.png", alt: "Золото" },
   army: { file: "army.png", alt: "Войска" },
@@ -436,6 +441,104 @@ const TROLL_CAVES = [
   { x: 0, y: 11, key: "0,11", looted: false }, // 01:12
   { x: 13, y: 0, key: "13,0", looted: false } // 14:01
 ];
+const TROLL_CAVE_INTERIOR_COLS = 20;
+const TROLL_CAVE_INTERIOR_ROWS = 15;
+// Два наружных входа ведут в две зоны одной общей внутренней пещеры.
+const TROLL_CAVE_ENTRANCE_CELL_NUMBERS = [
+  [290, 291],
+  [43, 44, 63]
+];
+const TROLL_CAVE_PIT_CELL_NUMBER = 137;
+const TROLL_CAVE_BLOCKED_CELL_NUMBERS_RAW = [
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+  21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+  41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60,
+  61, 62, 63, 76, 77, 78, 79, 80, 81, 82, 89, 94, 98, 99, 100, 101, 104, 105, 111,
+  112, 119, 120, 121, 122, 130, 131, 132, 140, 141, 144, 160, 161, 179, 180, 181, 182,
+  186, 187, 193, 194, 195, 199, 200, 201, 202, 203, 206, 207, 208, 212, 213, 214, 215,
+  216, 219, 220, 221, 222, 233, 239, 240, 241, 242, 259, 260, 261, 262, 263, 264, 265,
+  266, 267, 268, 269, 272, 273, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286,
+  287, 288, 289, 292, 293, 294, 295, 296, 297, 298, 299, 300
+];
+const TROLL_CAVE_ENTRANCE_CELL_NUMBER_SET = new Set(TROLL_CAVE_ENTRANCE_CELL_NUMBERS.flat());
+const TROLL_CAVE_BLOCKED_CELL_NUMBERS = TROLL_CAVE_BLOCKED_CELL_NUMBERS_RAW.filter(
+  number => !TROLL_CAVE_ENTRANCE_CELL_NUMBER_SET.has(number)
+);
+const TROLL_CAVE_BLOCKED_KEYS = new Set(TROLL_CAVE_BLOCKED_CELL_NUMBERS.map(number => {
+  const index = Math.max(0, number - 1);
+  return `${index % TROLL_CAVE_INTERIOR_COLS},${Math.floor(index / TROLL_CAVE_INTERIOR_COLS)}`;
+}));
+let trollCaveInteriorState = {
+  generation: 0,
+  sourceCaveIndex: null,
+  lootByPos: {}
+};
+
+function getTrollCaveCellKeyByNumber(number) {
+  const index = Math.max(0, Number(number) - 1);
+  return `${index % TROLL_CAVE_INTERIOR_COLS},${Math.floor(index / TROLL_CAVE_INTERIOR_COLS)}`;
+}
+
+function getTrollCaveCellNumber(x, y) {
+  return y * TROLL_CAVE_INTERIOR_COLS + x + 1;
+}
+
+function getTrollCaveEntranceIndexByKey(key) {
+  return TROLL_CAVE_ENTRANCE_CELL_NUMBERS.findIndex(numbers =>
+    numbers.some(number => getTrollCaveCellKeyByNumber(number) === key)
+  );
+}
+
+function clearTrollCaveInteriorPosition() {
+  trollState.interiorX = null;
+  trollState.interiorY = null;
+  trollState.interiorKey = null;
+}
+
+function placeTrollInsideCave(caveIndex) {
+  const entranceKeys = new Set(
+    TROLL_CAVE_ENTRANCE_CELL_NUMBERS.flat().map(getTrollCaveCellKeyByNumber)
+  );
+  const pitKey = getTrollCaveCellKeyByNumber(TROLL_CAVE_PIT_CELL_NUMBER);
+  const occupied = new Set(Object.keys(trollCaveInteriorState?.lootByPos || {}));
+  if (typeof players !== "undefined" && Array.isArray(players)) {
+    players.forEach(player => {
+      if ((player?.layer || "upper") === "troll-cave") {
+        occupied.add(`${player.x},${player.y}`);
+      }
+    });
+  }
+  const availableKeys = [];
+  for (let y = 0; y < TROLL_CAVE_INTERIOR_ROWS; y += 1) {
+    for (let x = 0; x < TROLL_CAVE_INTERIOR_COLS; x += 1) {
+      const key = `${x},${y}`;
+      if (TROLL_CAVE_BLOCKED_KEYS.has(key)) continue;
+      if (entranceKeys.has(key) || key === pitKey || occupied.has(key)) continue;
+      availableKeys.push(key);
+    }
+  }
+  if (!availableKeys.length) {
+    clearTrollCaveInteriorPosition();
+    return false;
+  }
+  const key = availableKeys[Math.floor(Math.random() * availableKeys.length)];
+  const [x, y] = key.split(",").map(Number);
+  trollState.interiorX = x;
+  trollState.interiorY = y;
+  trollState.interiorKey = key;
+  return true;
+}
+
+function notifyTrollCaveArrival(caveIndex, options = {}) {
+  if (caveIndex < 0 || caveIndex >= TROLL_CAVES.length) return;
+  TROLL_CAVES[caveIndex].looted = false;
+  placeTrollInsideCave(caveIndex);
+  if (!options.skipLootDeposit && typeof depositTrollCarriedLootInCave === "function") {
+    depositTrollCarriedLootInCave(caveIndex, options);
+  }
+  trollState.caveLootCarryLimit = null;
+  trollState.caveLootCarryCount = 0;
+}
 function getTrollCaveIndexByKey(key) {
   return TROLL_CAVES.findIndex(cave => cave.key === key);
 }
@@ -446,13 +549,28 @@ function markTrollCaveLooted(index, value) {
 }
 
 const TROLL_STAY_MIN = 5;
-const TROLL_STAY_MAX = 10;
-const TROLL_RESPAWN_MIN = 5;
-const TROLL_RESPAWN_MAX = 10;
+const TROLL_STAY_MAX = 8;
+const TROLL_RESPAWN_TURNS = 5;
 const TROLL_SPEED = 4;
+const TROLL_STUN_DURATION = 5;
 const TROLL_EVENT_SPEED_MIN = 5;
 const TROLL_EVENT_SPEED_MAX = 7;
 const TROLL_EXTRA_STEPS = 0;
+const TROLL_CAVE_ARTIFACT_CHANCE = 0.1;
+const TROLL_CAVE_RESOURCE_CELL_LIMIT = 15;
+const TROLL_CAVE_INITIAL_LOOT_SLOTS = 3;
+const TROLL_EVENT_CARRIED_LOOT_LIMIT = 7;
+const TROLL_CAVE_LOOT_SCALE_TURN = 150;
+const TROLL_CAVE_LOOT_SLOT_RANGES = {
+  gold: [50, 300],
+  resources: [20, 150],
+  army: [5, 15]
+};
+const TROLL_CAVE_LOOT_LATE_SLOT_RANGES = {
+  gold: [250, 500],
+  resources: [100, 200],
+  army: [10, 20]
+};
 let trollState = {
   x: null,
   y: null,
@@ -467,10 +585,43 @@ let trollState = {
   stunUsed: false,
   active: true,
   respawnTurns: 0,
+  respawnCountdownPending: false,
   roamTurnsRemaining: 0,
   roamTargetX: null,
-  roamTargetY: null
+  roamTargetY: null,
+  interiorX: null,
+  interiorY: null,
+  interiorKey: null,
+  carriedCaveLootSlots: [],
+  caveLootCarryLimit: null,
+  caveLootCarryCount: 0
 };
+
+function accumulateTrollCaveLootSlot(options = {}) {
+  if (!Array.isArray(trollState.carriedCaveLootSlots)) {
+    trollState.carriedCaveLootSlots = [];
+  }
+  const carryLimit = trollState.caveLootCarryLimit;
+  const carriedDuringLimitedRun = Math.max(0, Number(trollState.caveLootCarryCount) || 0);
+  if (Number.isFinite(carryLimit) && carryLimit >= 0 && carriedDuringLimitedRun >= carryLimit) {
+    return false;
+  }
+  const typeKeys = Object.keys(TROLL_CAVE_LOOT_SLOT_RANGES);
+  const typeKey = typeKeys[Math.floor(Math.random() * typeKeys.length)];
+  const lootTurn = Number.isFinite(options.turn) ? options.turn : turnCounter;
+  const activeRanges = lootTurn >= TROLL_CAVE_LOOT_SCALE_TURN
+    ? TROLL_CAVE_LOOT_LATE_SLOT_RANGES
+    : TROLL_CAVE_LOOT_SLOT_RANGES;
+  const [minimum, maximum] = activeRanges[typeKey];
+  trollState.carriedCaveLootSlots.push({
+    typeKey,
+    amount: randomIntRange(minimum, maximum)
+  });
+  if (Number.isFinite(carryLimit) && carryLimit >= 0) {
+    trollState.caveLootCarryCount = carriedDuringLimitedRun + 1;
+  }
+  return true;
+}
 
 function initTrollCaves() {
   TROLL_CAVES.forEach((cave, index) => {
@@ -510,9 +661,17 @@ function initTrollState() {
   trollState.stunUsed = false;
   trollState.active = true;
   trollState.respawnTurns = 0;
+  trollState.respawnCountdownPending = false;
   trollState.roamTurnsRemaining = 0;
   trollState.roamTargetX = null;
   trollState.roamTargetY = null;
+  trollState.carriedCaveLootSlots = [];
+  trollState.caveLootCarryLimit = null;
+  trollState.caveLootCarryCount = 0;
+  for (let index = 0; index < TROLL_CAVE_INITIAL_LOOT_SLOTS; index += 1) {
+    accumulateTrollCaveLootSlot({ turn: 0 });
+  }
+  notifyTrollCaveArrival(startIndex, { silent: true, skipArtifactRoll: true });
   updateTrollVisual();
 }
 
@@ -520,6 +679,12 @@ function isTrollInCave() {
   if (trollState.currentCaveIndex === null) return false;
   const cave = TROLL_CAVES[trollState.currentCaveIndex];
   return !trollState.moving && trollState.key === cave.key;
+}
+
+function hasPlayersInsideTrollCave() {
+  return typeof players !== "undefined" &&
+    Array.isArray(players) &&
+    players.some(player => (player?.layer || "upper") === "troll-cave");
 }
 
 function clearTrollTokenAt(key) {
@@ -546,6 +711,13 @@ function ensureTrollTokenAt(x, y) {
 }
 
 function updateTrollVisual() {
+  const upperWorldVisible =
+    typeof getVisibleWorldLayer !== "function" ||
+    getVisibleWorldLayer() === WORLD_LAYER_UPPER;
+  if (!upperWorldVisible) {
+    trollState.prevKey = trollState.key;
+    return;
+  }
   if (trollState.prevKey) {
     clearTrollTokenAt(trollState.prevKey);
   }
@@ -572,22 +744,45 @@ function spawnTrollAtRandomCave() {
   trollState.stunUsed = false;
   trollState.active = true;
   trollState.respawnTurns = 0;
-  if ((trollState.roamTurnsRemaining || 0) > 0) {
-    trollState.currentCaveIndex = null;
-    trollState.targetCaveIndex = null;
-    trollState.turnsRemaining = 0;
-    forceTrollExitCave();
-  }
+  trollState.respawnCountdownPending = false;
+  trollState.roamTurnsRemaining = 0;
+  trollState.roamTargetX = null;
+  trollState.roamTargetY = null;
+  trollState.caveLootCarryLimit = null;
+  trollState.caveLootCarryCount = 0;
+  notifyTrollCaveArrival(index, { skipArtifactRoll: true });
   updateTrollVisual();
 }
 
 function handleTrollDefeat() {
   if (!trollState.active) return;
+  const deathX = trollState.x;
+  const deathY = trollState.y;
+  let deliveryCaveIndex = Number.isInteger(trollState.targetCaveIndex)
+    ? trollState.targetCaveIndex
+    : trollState.currentCaveIndex;
+  if (!Number.isInteger(deliveryCaveIndex)) {
+    deliveryCaveIndex = TROLL_CAVES.reduce((nearestIndex, cave, index) => {
+      const nearest = TROLL_CAVES[nearestIndex];
+      const distance = Math.abs(cave.x - deathX) + Math.abs(cave.y - deathY);
+      const nearestDistance = Math.abs(nearest.x - deathX) + Math.abs(nearest.y - deathY);
+      return distance < nearestDistance ? index : nearestIndex;
+    }, 0);
+  }
+  if (typeof depositTrollCarriedLootInCave === "function") {
+    depositTrollCarriedLootInCave(deliveryCaveIndex, { silent: true, skipArtifactRoll: true });
+  }
   if (trollState.key) {
     clearTrollTokenAt(trollState.key);
   }
   trollState.active = false;
-  trollState.respawnTurns = randomIntRange(TROLL_RESPAWN_MIN, TROLL_RESPAWN_MAX);
+  trollState.respawnTurns = TROLL_RESPAWN_TURNS;
+  trollState.respawnCountdownPending = true;
+  trollState.roamTurnsRemaining = 0;
+  trollState.roamTargetX = null;
+  trollState.roamTargetY = null;
+  trollState.caveLootCarryLimit = null;
+  trollState.caveLootCarryCount = 0;
   trollState.currentCaveIndex = null;
   trollState.targetCaveIndex = null;
   trollState.moving = false;
@@ -597,12 +792,18 @@ function handleTrollDefeat() {
   trollState.y = null;
   trollState.key = null;
   trollState.prevKey = null;
+  clearTrollCaveInteriorPosition();
+  if (typeof emitStateNow === "function") emitStateNow(true);
 }
 
 function startTrollsLeaveCaves(duration) {
-  trollState.roamTurnsRemaining = Math.max(trollState.roamTurnsRemaining || 0, duration);
   if (!trollState.active) return;
-  if (isTrollInCave()) {
+  const wasAlreadyRoaming = (trollState.roamTurnsRemaining || 0) > 0;
+  trollState.roamTurnsRemaining = Math.max(trollState.roamTurnsRemaining || 0, duration);
+  trollState.caveLootCarryLimit = TROLL_EVENT_CARRIED_LOOT_LIMIT;
+  if (!wasAlreadyRoaming) trollState.caveLootCarryCount = 0;
+  if (isTrollInCave() && hasPlayersInsideTrollCave()) return;
+  if (isTrollInCave() && !hasPlayersInsideTrollCave()) {
     forceTrollExitCave();
   }
   trollState.currentCaveIndex = null;
@@ -613,7 +814,28 @@ function startTrollsLeaveCaves(duration) {
   trollState.stunUsed = false;
 }
 
+function getRandomTrollCaveIndex(excludedIndex = null) {
+  const availableIndexes = TROLL_CAVES
+    .map((_, index) => index)
+    .filter(index => index !== excludedIndex);
+  if (!availableIndexes.length) return 0;
+  return availableIndexes[Math.floor(Math.random() * availableIndexes.length)];
+}
+
+function placeTrollAtExteriorCave(caveIndex) {
+  const cave = TROLL_CAVES[caveIndex];
+  if (!cave) return false;
+  trollState.currentCaveIndex = caveIndex;
+  trollState.x = cave.x;
+  trollState.y = cave.y;
+  trollState.key = cave.key;
+  return true;
+}
+
 function forceTrollExitCave() {
+  clearTrollCaveInteriorPosition();
+  const exitIndex = getRandomTrollCaveIndex();
+  if (!placeTrollAtExteriorCave(exitIndex)) return;
   const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
   const valid = dirs.filter(([dx, dy]) => {
     const nx = trollState.x + dx;
@@ -740,7 +962,12 @@ function buildTrollPath(start, end) {
 
 function startTrollMove() {
   if (trollState.currentCaveIndex === null) return;
-  const targetIndex = trollState.currentCaveIndex === 0 ? 1 : 0;
+  clearTrollCaveInteriorPosition();
+  trollState.caveLootCarryLimit = null;
+  trollState.caveLootCarryCount = 0;
+  const exitIndex = getRandomTrollCaveIndex();
+  if (!placeTrollAtExteriorCave(exitIndex)) return;
+  const targetIndex = getRandomTrollCaveIndex(exitIndex);
   const start = { x: trollState.x, y: trollState.y };
   const end = { x: TROLL_CAVES[targetIndex].x, y: TROLL_CAVES[targetIndex].y };
   trollState.targetCaveIndex = targetIndex;
@@ -799,12 +1026,19 @@ function handleTrollsTurn() {
   if (trollState.roamTurnsRemaining > 0) {
     trollState.roamTurnsRemaining -= 1;
     if (trollState.roamTurnsRemaining <= 0) {
-      returnTrollToCave();
-      updateTrollVisual();
-      return;
+      if (!isTrollInCave()) {
+        if (trollState.active) accumulateTrollCaveLootSlot();
+        returnTrollToCave();
+        updateTrollVisual();
+        return;
+      }
     }
   }
   if (!trollState.active) {
+    if (trollState.respawnCountdownPending) {
+      trollState.respawnCountdownPending = false;
+      return;
+    }
     if (trollState.respawnTurns > 0) {
       trollState.respawnTurns -= 1;
       if (trollState.respawnTurns <= 0) {
@@ -815,14 +1049,27 @@ function handleTrollsTurn() {
   }
   const roaming = (trollState.roamTurnsRemaining || 0) > 0;
   if (!roaming && trollState.currentCaveIndex === null && !trollState.moving) return;
+  // Таймер выхода продолжает идти, пока игрок задерживает тролля внутри.
+  // Если срок уже наступил, тролль покинет пещеру на первом ходу без игроков.
+  if (!roaming && isTrollInCave() && !trollState.moving) {
+    trollState.turnsRemaining = Math.max(0, trollState.turnsRemaining - 1);
+  }
+  if (
+    isTrollInCave() &&
+    typeof handleTrollInsideCaveTurn === "function" &&
+    handleTrollInsideCaveTurn()
+  ) {
+    updateTrollVisual();
+    return;
+  }
   if (roaming && isTrollInCave()) {
     forceTrollExitCave();
   }
-  if (!roaming && !trollState.moving) {
-    trollState.turnsRemaining -= 1;
-    if (trollState.turnsRemaining <= 0) {
-      startTrollMove();
-    }
+  if (!roaming && !trollState.moving && trollState.turnsRemaining <= 0) {
+    startTrollMove();
+  }
+  if (!isTrollInCave()) {
+    accumulateTrollCaveLootSlot();
   }
   const canStun = roaming || trollState.moving;
   if (canStun && Array.isArray(players)) {
@@ -831,7 +1078,7 @@ function handleTrollsTurn() {
         player: p,
         dist: Math.abs(p.x - trollState.x) + Math.abs(p.y - trollState.y)
       }))
-      .filter(entry => (entry.player.layer || WORLD_LAYER_UPPER) !== WORLD_LAYER_UNDER)
+      .filter(entry => (entry.player.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_UPPER)
       .filter(entry => entry.dist <= 5)
       .filter(entry => (entry.player.invisTurnsRemaining || 0) <= 0)
       .sort((a, b) => a.dist - b.dist);
@@ -855,11 +1102,7 @@ function handleTrollsTurn() {
       trollState.x = tx;
       trollState.y = ty;
       trollState.key = `${tx},${ty}`;
-      if (typeof target.stunnedTurnsRemaining === "number") {
-        target.stunnedTurnsRemaining = Math.max(target.stunnedTurnsRemaining, 3);
-      } else {
-        target.stunnedTurnsRemaining = 3;
-      }
+      target.stunnedTurnsRemaining = TROLL_STUN_DURATION;
       target.stunSource = "troll";
       trollState.stunUsed = true;
       if (!roaming) {
@@ -896,7 +1139,7 @@ function handleTrollsTurn() {
       trollState.x = cave.x;
       trollState.y = cave.y;
       trollState.key = cave.key;
-      cave.looted = false;
+      notifyTrollCaveArrival(trollState.currentCaveIndex);
       trollState.turnsRemaining = randomIntRange(TROLL_STAY_MIN, TROLL_STAY_MAX);
       trollState.stunUsed = false;
     }
@@ -1009,7 +1252,7 @@ function setCellToInactive(x, y, {skipTreasureCleanup = false} = {}) {
     clearTreasure();
     return;
   }
-  cell.classList.remove("resource", "important", "owned", "reachable", "barbarian", "special", "forest", "resource-disabled", "mercenary", "thief", "cutthroat", "messenger", "caravan", "werewolf", "mage", "portal", "wormhole", "stairs", "flower", "clover", "stone", "rainbow-stone", "void-shard", "master", "troll", "troll-cave", "treasure");
+  cell.classList.remove("resource", "important", "owned", "reachable", "harpoon-target", "barbarian", "special", "forest", "resource-disabled", "mercenary", "thief", "cutthroat", "messenger", "caravan", "werewolf", "mage", "portal", "wormhole", "stairs", "flower", "clover", "stone", "rainbow-stone", "void-shard", "master", "troll", "troll-cave", "tavern", "tavern-node", "treasure");
   cell.classList.add("inactive");
   cell.textContent = "";
   clearCellIcon(cell);

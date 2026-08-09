@@ -279,6 +279,7 @@ function buildState() {
       y: p.y,
       layer: p.layer,
       underworldState: shallowClone(p.underworldState),
+      trollCaveEntranceIndex: p.trollCaveEntranceIndex,
       resources: shallowClone(p.resources),
       pocket: shallowClone(p.pocket),
       income: shallowClone(p.income),
@@ -294,15 +295,21 @@ function buildState() {
       fogOfWarCount: p.fogOfWarCount,
       invisPotionCount: p.invisPotionCount,
       luckPotionCount: p.luckPotionCount,
+      invulnPotionCount: p.invulnPotionCount,
       invisTurnsRemaining: p.invisTurnsRemaining,
       luckTurnsRemaining: p.luckTurnsRemaining,
+      invulnTurnsRemaining: p.invulnTurnsRemaining,
       cloverCount: p.cloverCount,
       trollClubCount: p.trollClubCount,
+      werewolfFangCount: p.werewolfFangCount,
       flowerCount: p.flowerCount,
       voidShardCount: p.voidShardCount,
       tokenCount: p.tokenCount,
       ballistaCount: p.ballistaCount,
+      ballistaLevel: p.ballistaLevel,
+      ballistaShotsThisTurn: p.ballistaShotsThisTurn,
       boltCount: p.boltCount,
+      harpoonCount: p.harpoonCount,
       bootsCount: p.bootsCount,
       ringCount: p.ringCount,
       terrorRingCount: p.terrorRingCount,
@@ -317,6 +324,11 @@ function buildState() {
       heroHiltCount: p.heroHiltCount,
       trapStunCount: p.trapStunCount,
       bridgeCount: p.bridgeCount,
+      beerProtectionTurnsRemaining: p.beerProtectionTurnsRemaining,
+      beerSlowTurnsRemaining: p.beerSlowTurnsRemaining,
+      beerEffectStartedTurn: p.beerEffectStartedTurn,
+      tavernWheelPlaysThisTurn: p.tavernWheelPlaysThisTurn,
+      tavernDragonPlaysThisTurn: p.tavernDragonPlaysThisTurn,
       stoneBonusRollsRemaining: p.stoneBonusRollsRemaining,
       stoneSpeedTurnsRemaining: p.stoneSpeedTurnsRemaining,
       stunnedTurnsRemaining: p.stunnedTurnsRemaining,
@@ -409,6 +421,7 @@ function buildState() {
       nextSpawnTurn: mageSlot.nextSpawnTurn
     },
     trollState: shallowClone(trollState),
+    trollCaveInteriorState: shallowClone(trollCaveInteriorState),
     trollCaves: TROLL_CAVES.map(cave => ({
       key: cave.key,
       x: cave.x,
@@ -451,11 +464,15 @@ function buildState() {
     wormholeSpawnIndex,
     lastBattleResult: shallowClone(lastBattleResult),
     lastBattleId,
+    pendingPlayerBattle: typeof clonePendingPlayerBattleForSync === "function" ? clonePendingPlayerBattleForSync() : null,
+    playerBattleSequenceId: typeof playerBattleSequenceId === "number" ? playerBattleSequenceId : 0,
+    playerBattleRevealState: shallowClone(playerBattleRevealState),
     pendingTurnAdvance,
     pendingTurnManualOnly,
     pendingTurnRequiresManualConfirm: typeof pendingTurnRequiresManualConfirm === "boolean" ? pendingTurnRequiresManualConfirm : false,
     deferredPrivateTurnPlayerIndex,
     ballistaModePlayerIndex,
+    harpoonModePlayerIndex,
     bridgeModePlayerIndex,
     voidShardModePlayerIndex: typeof voidShardModePlayerIndex === "number" ? voidShardModePlayerIndex : null,
     reachableKeys: Array.from(reachableKeys),
@@ -771,6 +788,15 @@ function applyState(state) {
   gameTimerSeconds = state.gameTimerSeconds ?? gameTimerSeconds;
   const incomingBattleId = state.lastBattleId ?? lastBattleId;
   const incomingBattleResult = state.lastBattleResult ?? lastBattleResult;
+  if (typeof pendingPlayerBattle !== "undefined") {
+    pendingPlayerBattle = state.pendingPlayerBattle ? { ...state.pendingPlayerBattle } : null;
+  }
+  if (typeof playerBattleSequenceId !== "undefined") {
+    playerBattleSequenceId = state.playerBattleSequenceId ?? playerBattleSequenceId;
+  }
+  if (typeof playerBattleRevealState !== "undefined") {
+    playerBattleRevealState = state.playerBattleRevealState ? { ...state.playerBattleRevealState } : null;
+  }
   pendingTurnAdvance = state.pendingTurnAdvance ?? pendingTurnAdvance;
   pendingTurnManualOnly = state.pendingTurnManualOnly ?? pendingTurnManualOnly;
   if (typeof pendingTurnRequiresManualConfirm !== "undefined") {
@@ -782,6 +808,9 @@ function applyState(state) {
       : null;
   }
   ballistaModePlayerIndex = Number.isInteger(state.ballistaModePlayerIndex) ? state.ballistaModePlayerIndex : null;
+  if (typeof harpoonModePlayerIndex !== "undefined") {
+    harpoonModePlayerIndex = Number.isInteger(state.harpoonModePlayerIndex) ? state.harpoonModePlayerIndex : null;
+  }
   bridgeModePlayerIndex = Number.isInteger(state.bridgeModePlayerIndex) ? state.bridgeModePlayerIndex : null;
   if (typeof voidShardModePlayerIndex !== "undefined") {
     voidShardModePlayerIndex = Number.isInteger(state.voidShardModePlayerIndex) ? state.voidShardModePlayerIndex : null;
@@ -903,6 +932,9 @@ function applyState(state) {
     trollState.prevKey = null;
     updateTrollVisual();
   }
+  if (state.trollCaveInteriorState && typeof trollCaveInteriorState !== "undefined") {
+    trollCaveInteriorState = shallowClone(state.trollCaveInteriorState);
+  }
 
   barbarianCells.length = 0;
   (state.barbarianCells || []).forEach(entry => {
@@ -980,6 +1012,8 @@ function applyState(state) {
   reachableKeys = new Set(state.reachableKeys || []);
   if (ballistaModePlayerIndex === currentPlayerIndex && typeof showBallistaRange === "function") {
     showBallistaRange(ballistaModePlayerIndex);
+  } else if (typeof harpoonModePlayerIndex !== "undefined" && harpoonModePlayerIndex === currentPlayerIndex && typeof showHarpoonTargets === "function") {
+    showHarpoonTargets(harpoonModePlayerIndex);
   } else {
     showReachable();
   }
@@ -1006,6 +1040,11 @@ function applyState(state) {
       typeof hirePlayerIndex === "number") {
     openHire(hirePlayerIndex);
   }
+  if (typeof pendingTavernPlayerIndex === "number") {
+    if (typeof syncTavernModalState === "function") syncTavernModalState(pendingTavernPlayerIndex);
+    if (typeof syncTavernWheelModalState === "function") syncTavernWheelModalState(pendingTavernPlayerIndex);
+    if (typeof syncTavernDragonModalState === "function") syncTavernDragonModalState(pendingTavernPlayerIndex);
+  }
   if (typeof refreshVisibleWorld === "function") {
     refreshVisibleWorld();
   }
@@ -1019,6 +1058,9 @@ function applyState(state) {
   }
   if (typeof syncKingGenerosityModalVisibility === "function") {
     syncKingGenerosityModalVisibility();
+  }
+  if (typeof syncPlayerBattleCardModalFromState === "function") {
+    syncPlayerBattleCardModalFromState();
   }
   maybeAcknowledgeDeferredTurnBlock("applyState");
   if (incomingBattleId !== lastBattleId) {
@@ -1055,7 +1097,10 @@ function getActionFromEvent(e) {
     const clickY = e.clientY - rect.top;
     const gridX = Math.floor(clickX / cellSize);
     const gridY = Math.floor(clickY / cellSize);
-    if (gridX >= 0 && gridX < COLS && gridY >= 0 && gridY < ROWS) {
+    const dimensions = typeof getVisibleWorldDimensions === "function"
+      ? getVisibleWorldDimensions()
+      : { cols: COLS, rows: ROWS };
+    if (gridX >= 0 && gridX < dimensions.cols && gridY >= 0 && gridY < dimensions.rows) {
       return { type: "game_click", x: gridX, y: gridY };
     }
   }
@@ -1216,6 +1261,10 @@ function performPrivateUiAction(action) {
         buyCastleBallista();
         return;
       }
+      if (actionType === "upgradeBallista" && typeof upgradeCastleBallista === "function") {
+        upgradeCastleBallista();
+        return;
+      }
       if (actionType === "buyBolt" && typeof buyCastleBolt === "function") {
         buyCastleBolt();
         return;
@@ -1244,9 +1293,34 @@ function performPrivateUiAction(action) {
       }
       return;
     }
+    if (modalType === "tavern") {
+      if (Number.isInteger(playerIndex)) {
+        pendingTavernPlayerIndex = playerIndex;
+      }
+      if (actionType === "drinkBeer" && typeof drinkTavernBeer === "function") {
+        drinkTavernBeer(playerIndex);
+        return;
+      }
+      if (actionType === "spinWheel" && typeof startTavernWheelSpin === "function") {
+        startTavernWheelSpin(playerIndex, payload.bet, payload.color);
+        return;
+      }
+      if (actionType === "startDragon" && typeof startTavernDragonGame === "function") {
+        startTavernDragonGame(playerIndex, payload.bet);
+        return;
+      }
+      if (actionType === "cashoutDragon" && typeof cashOutTavernDragon === "function") {
+        cashOutTavernDragon(playerIndex);
+      }
+      return;
+    }
     if (modalType === "inventory") {
       if (actionType === "cancelBallista" && typeof cancelBallistaMode === "function") {
         cancelBallistaMode(playerIndex);
+        return;
+      }
+      if (actionType === "cancelHarpoon" && typeof cancelHarpoonMode === "function") {
+        cancelHarpoonMode(playerIndex);
         return;
       }
       if (actionType === "cancelBridge" && typeof cancelBridgeMode === "function") {
@@ -1259,6 +1333,12 @@ function performPrivateUiAction(action) {
       }
       if (actionType === "use" && payload.useAction && typeof applyPotion === "function") {
         applyPotion(playerIndex, payload.useAction);
+      }
+      return;
+    }
+    if (modalType === "playerBattle") {
+      if (actionType === "chooseCard" && typeof submitPlayerBattleCard === "function") {
+        submitPlayerBattleCard(playerIndex, payload.cardKey, payload.battleId);
       }
       return;
     }
@@ -1670,6 +1750,18 @@ if (socket) {
       showBattleModal(payload.result, true);
       return;
     }
+    if (type === "showPlayerBattleCards" && typeof openPlayerBattleCardModal === "function") {
+      openPlayerBattleCardModal(payload.playerIndex, payload.battle);
+      return;
+    }
+    if (type === "revealPlayerBattleCards" && typeof showPlayerBattleCardReveal === "function") {
+      showPlayerBattleCardReveal(payload);
+      return;
+    }
+    if (type === "hidePlayerBattleCards" && typeof closePlayerBattleCardModal === "function") {
+      closePlayerBattleCardModal();
+      return;
+    }
     if (type === "showPickupToast" && typeof showPickupToast === "function") {
       showPickupToast(String(payload.text || ""), { skipBroadcast: true });
       return;
@@ -1717,6 +1809,46 @@ if (socket) {
       if (typeof showReachable === "function") {
         showReachable();
       }
+      if (Number.isInteger(payload.playerIndex) && typeof updateInventory === "function") {
+        updateInventory(payload.playerIndex);
+      }
+      return;
+    }
+    if (type === "activateHarpoonMode") {
+      if (typeof harpoonModePlayerIndex !== "undefined" && Number.isInteger(payload.playerIndex)) {
+        harpoonModePlayerIndex = payload.playerIndex;
+        if (typeof showHarpoonTargets === "function") {
+          showHarpoonTargets(payload.playerIndex);
+        }
+        if (typeof updateInventory === "function") {
+          updateInventory(payload.playerIndex);
+        }
+      }
+      return;
+    }
+    if (type === "animateHarpoonPickup") {
+      if (typeof animateHarpoonPickup === "function" && typeof payload.fromGridX === "number") {
+        const fromX = payload.fromGridX * cellSize + cellSize / 2;
+        const fromY = payload.fromGridY * cellSize + cellSize / 2;
+        const toX = payload.toGridX * cellSize + cellSize / 2;
+        const toY = payload.toGridY * cellSize + cellSize / 2;
+        if (typeof harpoonAnimationInFlight !== "undefined") harpoonAnimationInFlight = true;
+        if (typeof refreshTurnControls === "function") refreshTurnControls();
+        animateHarpoonPickup(fromX, fromY, toX, toY, payload.iconSrc, () => {
+          if (typeof harpoonAnimationInFlight !== "undefined") harpoonAnimationInFlight = false;
+          if (typeof refreshTurnControls === "function") refreshTurnControls();
+        });
+      }
+      return;
+    }
+    if (type === "clearHarpoonMode") {
+      if (typeof harpoonModePlayerIndex !== "undefined") {
+        if (!Number.isInteger(payload.playerIndex) || harpoonModePlayerIndex === payload.playerIndex) {
+          harpoonModePlayerIndex = null;
+        }
+      }
+      if (typeof clearReachable === "function") clearReachable();
+      if (typeof showReachable === "function") showReachable();
       if (Number.isInteger(payload.playerIndex) && typeof updateInventory === "function") {
         updateInventory(payload.playerIndex);
       }
@@ -1816,6 +1948,26 @@ if (socket) {
       openMasterModal(payload.playerIndex);
       return;
     }
+    if (type === "showTavernModal" && typeof openTavernModal === "function") {
+      openTavernModal(payload.playerIndex);
+      return;
+    }
+    if (type === "startTavernWheelSpin" && typeof beginTavernWheelSpinVisual === "function") {
+      beginTavernWheelSpinVisual(payload);
+      return;
+    }
+    if (type === "finishTavernWheelSpin" && typeof finishTavernWheelSpinVisual === "function") {
+      finishTavernWheelSpinVisual(payload);
+      return;
+    }
+    if (type === "startTavernDragon" && typeof beginTavernDragonVisual === "function") {
+      beginTavernDragonVisual();
+      return;
+    }
+    if (type === "finishTavernDragon" && typeof finishTavernDragonVisual === "function") {
+      finishTavernDragonVisual(payload);
+      return;
+    }
     if (type === "showMageModal" && typeof openMageModal === "function" && typeof getMageSlotById === "function") {
       const slot = getMageSlotById(payload.mageId);
       if (slot) openMageModal(slot, payload.playerIndex);
@@ -1858,7 +2010,7 @@ if (socket) {
     if (!onlineMatchStarted) return;
     if (isHost || applyingRemoteState || performingRemoteAction) return;
     if (onlineGamePaused) return;
-    if (e.target?.closest?.("#castleModal, #hireModal, #trollCaveModal, #battleModal, #worldEventModal, #kingAuctionModal, #kingGenerosityModal, #barracksModal, #lavkaModal, #workshopModal, #cityModal, #masterModal, #mageModal, #stoneModal, #stoneResultModal, #repairModal, #messengerModal, #guardModal")) {
+    if (e.target?.closest?.("#castleModal, #tavernModal, #tavernWheelModal, #tavernDragonModal, #hireModal, #trollCaveModal, #battleModal, #playerBattleCardModal, #worldEventModal, #kingAuctionModal, #kingGenerosityModal, #barracksModal, #lavkaModal, #workshopModal, #cityModal, #masterModal, #mageModal, #stoneModal, #stoneResultModal, #repairModal, #messengerModal, #guardModal")) {
       return;
     }
     const action = getActionFromEvent(e);
@@ -1882,7 +2034,7 @@ if (socket) {
     if (!onlineMatchStarted) return;
     if (!isHost || applyingRemoteState || performingRemoteAction) return;
     if (onlineGamePaused) return;
-    if (e.target?.closest?.("#castleModal, #hireModal, #trollCaveModal, #battleModal, #worldEventModal, #kingAuctionModal, #kingGenerosityModal, #barracksModal, #lavkaModal, #workshopModal, #cityModal, #masterModal, #mageModal, #stoneModal, #stoneResultModal, #repairModal, #messengerModal, #guardModal")) {
+    if (e.target?.closest?.("#castleModal, #tavernModal, #tavernWheelModal, #tavernDragonModal, #hireModal, #trollCaveModal, #battleModal, #playerBattleCardModal, #worldEventModal, #kingAuctionModal, #kingGenerosityModal, #barracksModal, #lavkaModal, #workshopModal, #cityModal, #masterModal, #mageModal, #stoneModal, #stoneResultModal, #repairModal, #messengerModal, #guardModal")) {
       return;
     }
     const action = getActionFromEvent(e);
