@@ -759,48 +759,48 @@ function applyState(state) {
   lastStateUpdateAt = Date.now();
   markNetworkEvent("applyState");
 
-  currentPlayerIndex = state.currentPlayerIndex ?? currentPlayerIndex;
+  currentPlayerIndex = Object.prototype.hasOwnProperty.call(state, "currentPlayerIndex") ? state.currentPlayerIndex : currentPlayerIndex;
   if (typeof syncPreparedBlockingModalTurn === "function") {
     syncPreparedBlockingModalTurn(currentPlayerIndex);
   }
-  movesRemaining = state.movesRemaining ?? movesRemaining;
+  movesRemaining = Object.prototype.hasOwnProperty.call(state, "movesRemaining") ? state.movesRemaining : movesRemaining;
   lastRoll = Object.prototype.hasOwnProperty.call(state, "lastRoll") ? state.lastRoll : lastRoll;
   lastRollText = Object.prototype.hasOwnProperty.call(state, "lastRollText") ? state.lastRollText : lastRollText;
   lastDie1 = Object.prototype.hasOwnProperty.call(state, "lastDie1") ? state.lastDie1 : lastDie1;
   lastDie2 = Object.prototype.hasOwnProperty.call(state, "lastDie2") ? state.lastDie2 : lastDie2;
-  extraTurnPending = state.extraTurnPending ?? extraTurnPending;
-  extraTurnReason = state.extraTurnReason ?? extraTurnReason;
-  justRolledDouble = state.justRolledDouble ?? justRolledDouble;
-  robberAmbushThisSession = state.robberAmbushThisSession ?? robberAmbushThisSession;
-  robbersEnabled = state.robbersEnabled ?? robbersEnabled;
-  turnCounter = state.turnCounter ?? turnCounter;
-  turnsUntilResources = state.turnsUntilResources ?? turnsUntilResources;
-  turnsUntilTreasure = state.turnsUntilTreasure ?? turnsUntilTreasure;
-  treasureTurnsRemaining = state.treasureTurnsRemaining ?? treasureTurnsRemaining;
-  flowerTurnsRemaining = state.flowerTurnsRemaining ?? flowerTurnsRemaining;
-  masterNextSpawnTurn = state.masterNextSpawnTurn ?? masterNextSpawnTurn;
-  masterTurnsRemaining = state.masterTurnsRemaining ?? masterTurnsRemaining;
-  masterActive = state.masterActive ?? masterActive;
-  barbarianPhaseStarted = state.barbarianPhaseStarted ?? barbarianPhaseStarted;
-  robberEvent = state.robberEvent ?? robberEvent;
-  gameEnded = state.gameEnded ?? gameEnded;
+  extraTurnPending = Object.prototype.hasOwnProperty.call(state, "extraTurnPending") ? state.extraTurnPending : extraTurnPending;
+  extraTurnReason = Object.prototype.hasOwnProperty.call(state, "extraTurnReason") ? state.extraTurnReason : extraTurnReason;
+  justRolledDouble = Object.prototype.hasOwnProperty.call(state, "justRolledDouble") ? state.justRolledDouble : justRolledDouble;
+  robberAmbushThisSession = Object.prototype.hasOwnProperty.call(state, "robberAmbushThisSession") ? state.robberAmbushThisSession : robberAmbushThisSession;
+  robbersEnabled = Object.prototype.hasOwnProperty.call(state, "robbersEnabled") ? state.robbersEnabled : robbersEnabled;
+  turnCounter = Object.prototype.hasOwnProperty.call(state, "turnCounter") ? state.turnCounter : turnCounter;
+  turnsUntilResources = Object.prototype.hasOwnProperty.call(state, "turnsUntilResources") ? state.turnsUntilResources : turnsUntilResources;
+  turnsUntilTreasure = Object.prototype.hasOwnProperty.call(state, "turnsUntilTreasure") ? state.turnsUntilTreasure : turnsUntilTreasure;
+  treasureTurnsRemaining = Object.prototype.hasOwnProperty.call(state, "treasureTurnsRemaining") ? state.treasureTurnsRemaining : treasureTurnsRemaining;
+  flowerTurnsRemaining = Object.prototype.hasOwnProperty.call(state, "flowerTurnsRemaining") ? state.flowerTurnsRemaining : flowerTurnsRemaining;
+  masterNextSpawnTurn = Object.prototype.hasOwnProperty.call(state, "masterNextSpawnTurn") ? state.masterNextSpawnTurn : masterNextSpawnTurn;
+  masterTurnsRemaining = Object.prototype.hasOwnProperty.call(state, "masterTurnsRemaining") ? state.masterTurnsRemaining : masterTurnsRemaining;
+  masterActive = Object.prototype.hasOwnProperty.call(state, "masterActive") ? state.masterActive : masterActive;
+  barbarianPhaseStarted = Object.prototype.hasOwnProperty.call(state, "barbarianPhaseStarted") ? state.barbarianPhaseStarted : barbarianPhaseStarted;
+  robberEvent = Object.prototype.hasOwnProperty.call(state, "robberEvent") ? state.robberEvent : robberEvent;
+  gameEnded = Object.prototype.hasOwnProperty.call(state, "gameEnded") ? state.gameEnded : gameEnded;
   gameWinnerIndex = Number.isInteger(state.gameWinnerIndex) ? state.gameWinnerIndex : null;
-  gameTimerSeconds = state.gameTimerSeconds ?? gameTimerSeconds;
-  const incomingBattleId = state.lastBattleId ?? lastBattleId;
-  const incomingBattleResult = state.lastBattleResult ?? lastBattleResult;
+  gameTimerSeconds = Object.prototype.hasOwnProperty.call(state, "gameTimerSeconds") ? state.gameTimerSeconds : gameTimerSeconds;
+  const incomingBattleId = Object.prototype.hasOwnProperty.call(state, "lastBattleId") ? state.lastBattleId : lastBattleId;
+  const incomingBattleResult = Object.prototype.hasOwnProperty.call(state, "lastBattleResult") ? state.lastBattleResult : lastBattleResult;
   if (typeof pendingPlayerBattle !== "undefined") {
     pendingPlayerBattle = state.pendingPlayerBattle ? { ...state.pendingPlayerBattle } : null;
   }
   if (typeof playerBattleSequenceId !== "undefined") {
-    playerBattleSequenceId = state.playerBattleSequenceId ?? playerBattleSequenceId;
+    playerBattleSequenceId = Object.prototype.hasOwnProperty.call(state, "playerBattleSequenceId") ? state.playerBattleSequenceId : playerBattleSequenceId;
   }
   if (typeof playerBattleRevealState !== "undefined") {
     playerBattleRevealState = state.playerBattleRevealState ? { ...state.playerBattleRevealState } : null;
   }
-  pendingTurnAdvance = state.pendingTurnAdvance ?? pendingTurnAdvance;
-  pendingTurnManualOnly = state.pendingTurnManualOnly ?? pendingTurnManualOnly;
+  pendingTurnAdvance = Object.prototype.hasOwnProperty.call(state, "pendingTurnAdvance") ? state.pendingTurnAdvance : pendingTurnAdvance;
+  pendingTurnManualOnly = Object.prototype.hasOwnProperty.call(state, "pendingTurnManualOnly") ? state.pendingTurnManualOnly : pendingTurnManualOnly;
   if (typeof pendingTurnRequiresManualConfirm !== "undefined") {
-    pendingTurnRequiresManualConfirm = state.pendingTurnRequiresManualConfirm ?? pendingTurnRequiresManualConfirm;
+    pendingTurnRequiresManualConfirm = Object.prototype.hasOwnProperty.call(state, "pendingTurnRequiresManualConfirm") ? state.pendingTurnRequiresManualConfirm : pendingTurnRequiresManualConfirm;
   }
   if (Object.prototype.hasOwnProperty.call(state, "deferredPrivateTurnPlayerIndex")) {
     deferredPrivateTurnPlayerIndex = Number.isInteger(state.deferredPrivateTurnPlayerIndex)
@@ -817,7 +817,7 @@ function applyState(state) {
   }
   upperWormhole = Object.prototype.hasOwnProperty.call(state, "upperWormhole") ? state.upperWormhole : upperWormhole;
   wormholeSpawnTurns = Array.isArray(state.wormholeSpawnTurns) ? state.wormholeSpawnTurns.slice() : wormholeSpawnTurns;
-  wormholeSpawnIndex = state.wormholeSpawnIndex ?? wormholeSpawnIndex;
+  wormholeSpawnIndex = Object.prototype.hasOwnProperty.call(state, "wormholeSpawnIndex") ? state.wormholeSpawnIndex : wormholeSpawnIndex;
   if (Array.isArray(state.scheduledWorldEvents)) {
     scheduledWorldEvents = state.scheduledWorldEvents.map(event => ({ ...event }));
   }
@@ -903,27 +903,27 @@ function applyState(state) {
   if (state.treasure) applyTreasure(state.treasure);
   if (state.flowerArtifact) applyFlower(state.flowerArtifact);
   if (state.cloverArtifact) applyClover(state.cloverArtifact);
-  cloverTurnsRemaining = state.cloverTurnsRemaining ?? cloverTurnsRemaining;
-  nextCloverSpawnTurn = state.nextCloverSpawnTurn ?? nextCloverSpawnTurn;
+  cloverTurnsRemaining = Object.prototype.hasOwnProperty.call(state, "cloverTurnsRemaining") ? state.cloverTurnsRemaining : cloverTurnsRemaining;
+  nextCloverSpawnTurn = Object.prototype.hasOwnProperty.call(state, "nextCloverSpawnTurn") ? state.nextCloverSpawnTurn : nextCloverSpawnTurn;
 
   (state.stoneByPos || []).forEach(applyStone);
   (state.rainbowByPos || []).forEach(applyRainbow);
   (state.voidShardByPos || []).forEach(applyVoidShard);
   if (typeof voidShardSpawnTurn !== "undefined") {
-    voidShardSpawnTurn = state.voidShardSpawnTurn ?? voidShardSpawnTurn;
+    voidShardSpawnTurn = Object.prototype.hasOwnProperty.call(state, "voidShardSpawnTurn") ? state.voidShardSpawnTurn : voidShardSpawnTurn;
   }
 
   if (state.portalState && typeof portalState !== "undefined" && portalState) {
     portalState.active = Boolean(state.portalState.active);
     portalState.keys = Array.isArray(state.portalState.keys) ? state.portalState.keys.slice() : [];
-    portalState.turnsRemaining = state.portalState.turnsRemaining ?? portalState.turnsRemaining;
-    portalState.nextSpawnTurn = state.portalState.nextSpawnTurn ?? portalState.nextSpawnTurn;
+    portalState.turnsRemaining = Object.prototype.hasOwnProperty.call(state.portalState, "turnsRemaining") ? state.portalState.turnsRemaining : portalState.turnsRemaining;
+    portalState.nextSpawnTurn = Object.prototype.hasOwnProperty.call(state.portalState, "nextSpawnTurn") ? state.portalState.nextSpawnTurn : portalState.nextSpawnTurn;
   }
 
   if (state.masterActive) applyMaster();
 
   if (state.mageSlot) {
-    mageSlot.nextSpawnTurn = state.mageSlot.nextSpawnTurn ?? mageSlot.nextSpawnTurn;
+    mageSlot.nextSpawnTurn = Object.prototype.hasOwnProperty.call(state.mageSlot, "nextSpawnTurn") ? state.mageSlot.nextSpawnTurn : mageSlot.nextSpawnTurn;
     applyMageSlot(state.mageSlot);
   }
 
@@ -951,35 +951,35 @@ function applyState(state) {
     applyMercenary(entry);
     mercenaries.push(entry);
   });
-  mercenaryIdCounter = state.mercenaryIdCounter ?? mercenaryIdCounter;
+  mercenaryIdCounter = Object.prototype.hasOwnProperty.call(state, "mercenaryIdCounter") ? state.mercenaryIdCounter : mercenaryIdCounter;
 
   thieves.length = 0;
   (state.thieves || []).forEach(entry => {
     applyThief(entry);
     thieves.push(entry);
   });
-  thiefIdCounter = state.thiefIdCounter ?? thiefIdCounter;
+  thiefIdCounter = Object.prototype.hasOwnProperty.call(state, "thiefIdCounter") ? state.thiefIdCounter : thiefIdCounter;
 
   cutthroats.length = 0;
   (state.cutthroats || []).forEach(entry => {
     applyCutthroat(entry);
     cutthroats.push(entry);
   });
-  cutthroatIdCounter = state.cutthroatIdCounter ?? cutthroatIdCounter;
+  cutthroatIdCounter = Object.prototype.hasOwnProperty.call(state, "cutthroatIdCounter") ? state.cutthroatIdCounter : cutthroatIdCounter;
 
   messengers.length = 0;
   (state.messengers || []).forEach(entry => {
     applyMessenger(entry);
     messengers.push(entry);
   });
-  messengerIdCounter = state.messengerIdCounter ?? messengerIdCounter;
+  messengerIdCounter = Object.prototype.hasOwnProperty.call(state, "messengerIdCounter") ? state.messengerIdCounter : messengerIdCounter;
 
   caravans.length = 0;
   (state.caravans || []).forEach(entry => {
     applyCaravan(entry);
     caravans.push(entry);
   });
-  caravanIdCounter = state.caravanIdCounter ?? caravanIdCounter;
+  caravanIdCounter = Object.prototype.hasOwnProperty.call(state, "caravanIdCounter") ? state.caravanIdCounter : caravanIdCounter;
 
   werewolfState = state.werewolfState ? { ...state.werewolfState } : null;
   if (werewolfState) {
@@ -998,7 +998,7 @@ function applyState(state) {
     });
   }
   if (typeof trapStunIdCounter !== "undefined") {
-    trapStunIdCounter = state.trapStunIdCounter ?? trapStunIdCounter;
+    trapStunIdCounter = Object.prototype.hasOwnProperty.call(state, "trapStunIdCounter") ? state.trapStunIdCounter : trapStunIdCounter;
   }
   if (typeof bridgeOpenedKeys !== "undefined") {
     bridgeOpenedKeys.clear();
