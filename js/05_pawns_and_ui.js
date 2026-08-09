@@ -4697,7 +4697,6 @@ function tryUseHarpoonAtCell(playerIndex, gridX, gridY) {
     return true;
   }
 
-  player.harpoonCount -= 1;
   harpoonModePlayerIndex = null;
   harpoonAnimationInFlight = true;
   clearReachable();
@@ -7146,7 +7145,7 @@ function syncWorkshopModalState(playerIndex) {
     if (type === "armor") btn.disabled = gold < costArmor || player.hasArmor === true;
     if (type === "sword") btn.disabled = gold < costSword || player.hasWorkshopSword === true;
     if (type === "hero-sword") btn.disabled = gold < costHeroSword || player.hasSword === true || (player.rainbowStoneCount || 0) <= 0 || (player.heroHiltCount || 0) <= 0;
-    if (type === "harpoon") btn.disabled = gold < costHarpoonGold || resources < HARPOON_RESOURCE_COST;
+    if (type === "harpoon") btn.disabled = gold < costHarpoonGold || resources < HARPOON_RESOURCE_COST || (player.harpoonCount || 0) > 0;
     if (type === "rainbow-infl") btn.disabled = (player.rainbowStoneCount || 0) <= 0;
     if (type === "castle-armor") {
       btn.parentElement.style.display = isDayBuffActive("carpenter") ? "" : "none";
@@ -7248,7 +7247,7 @@ workshopButtons.forEach(btn => {
       if (getTotalGold(player) < goldCost || getTotalResources(player) < HARPOON_RESOURCE_COST) return;
       spendGold(player, goldCost);
       spendResources(player, HARPOON_RESOURCE_COST);
-      player.harpoonCount = (player.harpoonCount || 0) + 1;
+      player.harpoonCount = 1;
       updateInventory(workshopPlayerIndex);
       showPickupToast("Горпун добавлен в инвентарь.");
       flashPrice(btn, goldCost, "assets/icons/icon-gold.png", "Золото");
