@@ -40,12 +40,11 @@ game.addEventListener("click", e => {
   const gridX = Math.floor(clickX / cellSize);
   const gridY = Math.floor(clickY / cellSize);
 
-  const visibleDimensions = typeof getVisibleWorldDimensions === "function"
-    ? getVisibleWorldDimensions()
-    : { cols: COLS, rows: ROWS };
-  if (gridX < 0 || gridX >= visibleDimensions.cols || gridY < 0 || gridY >= visibleDimensions.rows) return;
-
   const currentPlayer = players[currentPlayerIndex];
+  const currentLayer = currentPlayer?.layer || WORLD_LAYER_UPPER;
+  const boundsCols = currentLayer === WORLD_LAYER_TROLL_CAVE ? TROLL_CAVE_INTERIOR_COLS : COLS;
+  const boundsRows = currentLayer === WORLD_LAYER_TROLL_CAVE ? TROLL_CAVE_INTERIOR_ROWS : ROWS;
+  if (gridX < 0 || gridX >= boundsCols || gridY < 0 || gridY >= boundsRows) return;
   const key = `${gridX},${gridY}`;
   if (
     (currentPlayer.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_UPPER &&
