@@ -3924,10 +3924,6 @@ function applyPotion(playerIndex, type) {
       showPrivatePickupToastForPlayer(playerIndex, "Сначала бросьте кубики: горпун применяется во время перемещения.");
       return;
     }
-    if ((player.layer || WORLD_LAYER_UPPER) !== WORLD_LAYER_UPPER) {
-      showPrivatePickupToastForPlayer(playerIndex, "Горпун можно использовать только в верхнем мире.");
-      return;
-    }
     if (getHarpoonTargetKeys(playerIndex).length === 0) {
       showPrivatePickupToastForPlayer(playerIndex, "В радиусе 12 клеток нет доступной добычи для горпуна.");
       return;
@@ -4488,6 +4484,13 @@ function getHarpoonTargetAtKey(key) {
       iconSrc: `assets/icons/${iconDef?.file || "resources.png"}`
     };
   }
+  const caveLoot = trollCaveInteriorState?.lootByPos?.[key];
+  if (caveLoot) {
+    const def = TROLL_CAVE_LOOT_DEFS[caveLoot.typeKey];
+    if (def) {
+      return { key, kind: caveLoot.typeKey, iconSrc: `assets/icons/${def.icon}` };
+    }
+  }
   if (flowerArtifact?.key === key) {
     return { key, kind: "flower", iconSrc: "assets/icons/mystic_flower.png" };
   }
@@ -4505,7 +4508,7 @@ function getHarpoonTargetAtKey(key) {
 
 function isHarpoonTargetInRange(playerIndex, key) {
   const player = players[playerIndex];
-  if (!player || (player.layer || WORLD_LAYER_UPPER) !== WORLD_LAYER_UPPER) return false;
+  if (!player) return false;
   const [x, y] = String(key).split(",").map(Number);
   if (!Number.isInteger(x) || !Number.isInteger(y)) return false;
   const distance = Math.abs(player.x - x) + Math.abs(player.y - y);
@@ -4612,6 +4615,24 @@ function collectHarpoonTarget(playerIndex, target) {
     player.mysticStoneCount = (player.mysticStoneCount || 0) + 1;
     clearStone(key);
     message = "Горпун притянул необычный камень в инвентарь.";
+  } else if (target.kind === "gold" || target.kind === "resources" || target.kind === "army") {
+    const caveLoot = trollCaveInteriorState?.lootByPos?.[key];
+    if (!caveLoot) return false;
+    const amount = typeof getTrollCaveLootEffectiveAmount === "function"
+      ? getTrollCaveLootEffectiveAmount(caveLoot)
+      : (caveLoot.amount || 0);
+    if (caveLoot.typeKey === "gold") {
+      player.pocket.gold += amount;
+      message = `Горпун: +${amount} золота из пещеры`;
+    } else if (caveLoot.typeKey === "resources") {
+      player.pocket.resources += amount;
+      message = `Горпун: +${amount} ресурсов из пещеры`;
+    } else if (caveLoot.typeKey === "army") {
+      player.pocket.army += amount;
+      message = `Горпун: +${amount} войск из пещеры`;
+    }
+    delete trollCaveInteriorState.lootByPos[key];
+    refreshVisibleWorld();
   } else {
     return false;
   }

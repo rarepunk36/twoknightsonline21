@@ -6,12 +6,12 @@ const nodeByPos = {};
 const castleOwnersByKey = {};
 const castleStatsByKey = {};
 const CASTLE_LEVELS = {
-  1: {armor: 75, health: 50},
-  2: {armor: 150, health: 75},
-  3: {armor: 250, health: 100}
+  1: {armor: 100, health: 50},
+  2: {armor: 200, health: 75},
+  3: {armor: 300, health: 100}
 };
 const CASTLE_FEATURES = {
-  wall: {cost: 300, armor: 50, label: "Стена"},
+  wall: {cost: 300, armor: 75, label: "Стена"},
   lumber: {cost: 50, income: 3, label: "Лесопилка"},
   mine: {cost: 200, income: 10, label: "Шахта"},
   clay: {cost: 400, income: 15, label: "Глиняный карьер"}
