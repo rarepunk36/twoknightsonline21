@@ -42,6 +42,7 @@ const players = [
     ballistaShotsThisTurn: 0,
     boltCount: 0,
     harpoonCount: 0,
+    harpoonUsedThisTurn: false,
     ringCount: 0,
     terrorRingCount: 0,
     rainbowStoneCount: 0,
@@ -106,6 +107,7 @@ const players = [
     ballistaShotsThisTurn: 0,
     boltCount: 0,
     harpoonCount: 0,
+    harpoonUsedThisTurn: false,
     ringCount: 0,
     terrorRingCount: 0,
     rainbowStoneCount: 0,
@@ -3919,6 +3921,10 @@ function applyPotion(playerIndex, type) {
   }
   if (type === "harpoon") {
     if (playerIndex !== currentPlayerIndex || harpoonAnimationInFlight) return;
+    if (player.harpoonUsedThisTurn) {
+      showPrivatePickupToastForPlayer(playerIndex, "Горпун уже был использован в этом ходу.");
+      return;
+    }
     if ((player.harpoonCount || 0) <= 0) return;
     if (movesRemaining <= 0) {
       showPrivatePickupToastForPlayer(playerIndex, "Сначала бросьте кубики: горпун применяется во время перемещения.");
@@ -4473,35 +4479,37 @@ function animateBallistaBolt(fromX, fromY, toX, toY, onComplete) {
   setTimeout(finish, 500);
 }
 
-function getHarpoonTargetAtKey(key) {
-  const resourceNode = resourceByPos[key];
-  const resourceTypeKey = resourceNode?.type?.key || resourceNode?.typeKey;
-  if (resourceNode && ["gold", "army", "resources"].includes(resourceTypeKey)) {
-    const iconDef = RESOURCE_ICONS[resourceTypeKey];
-    return {
-      key,
-      kind: "resource",
-      iconSrc: `assets/icons/${iconDef?.file || "resources.png"}`
-    };
-  }
-  const caveLoot = trollCaveInteriorState?.lootByPos?.[key];
-  if (caveLoot) {
-    const def = TROLL_CAVE_LOOT_DEFS[caveLoot.typeKey];
-    if (def) {
-      return { key, kind: caveLoot.typeKey, iconSrc: `assets/icons/${def.icon}` };
+function getHarpoonTargetAtKey(key, layer = WORLD_LAYER_UPPER) {
+  if (layer === WORLD_LAYER_UPPER) {
+    const resourceNode = resourceByPos[key];
+    const resourceTypeKey = resourceNode?.type?.key || resourceNode?.typeKey;
+    if (resourceNode && ["gold", "army", "resources"].includes(resourceTypeKey)) {
+      const iconDef = RESOURCE_ICONS[resourceTypeKey];
+      return { key, kind: "resource", iconSrc: `assets/icons/${iconDef?.file || "resources.png"}` };
     }
+    if (flowerArtifact?.key === key) {
+      return { key, kind: "flower", iconSrc: "assets/icons/mystic_flower.png" };
+    }
+    if (cloverArtifact?.key === key) {
+      return { key, kind: "clover", iconSrc: "assets/icons/clover.png" };
+    }
+    if (rainbowByPos[key]) {
+      return { key, kind: "rainbow", iconSrc: "assets/icons/rainbow_stone.png" };
+    }
+    if (stoneByPos[key]) {
+      return { key, kind: "stone", iconSrc: "assets/icons/stone.png" };
+    }
+    return null;
   }
-  if (flowerArtifact?.key === key) {
-    return { key, kind: "flower", iconSrc: "assets/icons/mystic_flower.png" };
-  }
-  if (cloverArtifact?.key === key) {
-    return { key, kind: "clover", iconSrc: "assets/icons/clover.png" };
-  }
-  if (rainbowByPos[key]) {
-    return { key, kind: "rainbow", iconSrc: "assets/icons/rainbow_stone.png" };
-  }
-  if (stoneByPos[key]) {
-    return { key, kind: "stone", iconSrc: "assets/icons/stone.png" };
+  if (layer === WORLD_LAYER_TROLL_CAVE) {
+    const caveLoot = trollCaveInteriorState?.lootByPos?.[key];
+    if (caveLoot) {
+      const def = TROLL_CAVE_LOOT_DEFS[caveLoot.typeKey];
+      if (def) {
+        return { key, kind: caveLoot.typeKey, iconSrc: `assets/icons/${def.icon}` };
+      }
+    }
+    return null;
   }
   return null;
 }
@@ -4509,14 +4517,15 @@ function getHarpoonTargetAtKey(key) {
 function isHarpoonTargetInRange(playerIndex, key) {
   const player = players[playerIndex];
   if (!player) return false;
+  const layer = player.layer || WORLD_LAYER_UPPER;
   const [x, y] = String(key).split(",").map(Number);
   if (!Number.isInteger(x) || !Number.isInteger(y)) return false;
   const distance = Math.abs(player.x - x) + Math.abs(player.y - y);
   if (distance === 0 || distance > HARPOON_RANGE) return false;
-  if (typeof isUpperWorldKeyVisibleToPlayer === "function" && !isUpperWorldKeyVisibleToPlayer(key, playerIndex)) {
+  if (layer === WORLD_LAYER_UPPER && typeof isUpperWorldKeyVisibleToPlayer === "function" && !isUpperWorldKeyVisibleToPlayer(key, playerIndex)) {
     return false;
   }
-  return Boolean(getHarpoonTargetAtKey(key));
+  return Boolean(getHarpoonTargetAtKey(key, layer));
 }
 
 function getHarpoonTargetKeys(playerIndex) {
@@ -4549,7 +4558,8 @@ function cancelHarpoonMode(playerIndex) {
 
 function collectHarpoonTarget(playerIndex, target) {
   const player = players[playerIndex];
-  if (!player || !target || !getHarpoonTargetAtKey(target.key)) {
+  const playerLayer = player?.layer || WORLD_LAYER_UPPER;
+  if (!player || !target || !getHarpoonTargetAtKey(target.key, playerLayer)) {
     showPrivatePickupToastForPlayer(playerIndex, "Добыча для горпуна уже исчезла.");
     return false;
   }
@@ -4708,7 +4718,8 @@ function tryUseHarpoonAtCell(playerIndex, gridX, gridY) {
   if (harpoonModePlayerIndex !== playerIndex || playerIndex !== currentPlayerIndex) return false;
   const player = players[playerIndex];
   const key = `${gridX},${gridY}`;
-  const target = getHarpoonTargetAtKey(key);
+  const playerLayer = player?.layer || WORLD_LAYER_UPPER;
+  const target = getHarpoonTargetAtKey(key, playerLayer);
   if (!player || (player.harpoonCount || 0) <= 0) {
     cancelHarpoonMode(playerIndex);
     return true;
@@ -4724,6 +4735,7 @@ function tryUseHarpoonAtCell(playerIndex, gridX, gridY) {
 
   harpoonModePlayerIndex = null;
   harpoonAnimationInFlight = true;
+  player.harpoonUsedThisTurn = true;
   clearReachable();
   updateInventory(playerIndex);
   refreshTurnControls();
@@ -10577,6 +10589,7 @@ function completeTurnAdvance() {
   ballistaShotInFlight = false;
   harpoonModePlayerIndex = null;
   harpoonAnimationInFlight = false;
+  players.forEach(p => { if (p) p.harpoonUsedThisTurn = false; });
   if (players[currentPlayerIndex]) {
     players[currentPlayerIndex].ballistaShotsThisTurn = 0;
     players[currentPlayerIndex].tavernWheelPlaysThisTurn = 0;
