@@ -3944,6 +3944,10 @@ function applyPotion(playerIndex, type) {
   }
   if (type === "potion-invis") {
     if ((player.invisPotionCount || 0) <= 0) return;
+    if ((player.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_TROLL_CAVE) {
+      showPrivatePickupToastForPlayer(playerIndex, "Зелье невидимости не действует в пещере троллей.");
+      return;
+    }
     player.invisPotionCount -= 1;
     player.invisTurnsRemaining = Math.max(player.invisTurnsRemaining || 0, POTION_INVIS_TURNS);
     showPickupToast("Зелье невидимости: тролли не атакуют 25 ходов.");
