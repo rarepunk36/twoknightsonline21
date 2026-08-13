@@ -877,7 +877,9 @@ function placeTrollAtExteriorCave(caveIndex) {
 
 function forceTrollExitCave() {
   clearTrollCaveInteriorPosition();
-  const exitIndex = getRandomTrollCaveIndex();
+  const exitIndex = Number.isInteger(trollState.currentCaveIndex)
+    ? trollState.currentCaveIndex
+    : getRandomTrollCaveIndex();
   if (!placeTrollAtExteriorCave(exitIndex)) return;
   const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
   const valid = dirs.filter(([dx, dy]) => {
@@ -1008,7 +1010,9 @@ function startTrollMove() {
   clearTrollCaveInteriorPosition();
   trollState.caveLootCarryLimit = null;
   trollState.caveLootCarryCount = 0;
-  const exitIndex = getRandomTrollCaveIndex();
+  const exitIndex = Number.isInteger(trollState.currentCaveIndex)
+    ? trollState.currentCaveIndex
+    : getRandomTrollCaveIndex();
   if (!placeTrollAtExteriorCave(exitIndex)) return;
   const targetIndex = getRandomTrollCaveIndex(exitIndex);
   const start = { x: trollState.x, y: trollState.y };
@@ -1124,6 +1128,7 @@ function handleTrollsTurn() {
       .filter(entry => (entry.player.layer || WORLD_LAYER_UPPER) === WORLD_LAYER_UPPER)
       .filter(entry => entry.dist <= 5)
       .filter(entry => (entry.player.invisTurnsRemaining || 0) <= 0)
+      .filter(entry => entry.player.stunSource !== "troll" || (entry.player.stunnedTurnsRemaining || 0) <= 0)
       .sort((a, b) => a.dist - b.dist);
     if (!trollState.stunUsed && nearby.length && Math.random() < 0.5) {
       const target = nearby[0].player;
