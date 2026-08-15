@@ -710,6 +710,7 @@ let ballistaModePlayerIndex = null;
 let ballistaShotInFlight = false;
 let harpoonModePlayerIndex = null;
 let harpoonAnimationInFlight = false;
+let tavernSpectatorViewActive = false;
 let bridgeModePlayerIndex = null;
 let voidShardModePlayerIndex = null;
 const bridgeOpenedKeys = new Set();
@@ -6171,6 +6172,11 @@ function syncTavernModalState(playerIndex = pendingTavernPlayerIndex) {
   if (tavernDragonBtn) {
     tavernDragonBtn.disabled = (player.tavernDragonPlaysThisTurn || 0) >= TAVERN_DRAGON_MAX_PLAYS_PER_TURN;
   }
+  if (tavernSpectatorViewActive) {
+    [tavernDrinkBeerBtn, tavernWheelBtn, tavernDragonBtn].forEach(button => {
+      if (button) button.disabled = true;
+    });
+  }
 }
 
 function syncTavernWheelModalState(playerIndex = pendingTavernPlayerIndex) {
@@ -6195,6 +6201,12 @@ function syncTavernWheelModalState(playerIndex = pendingTavernPlayerIndex) {
   });
   if (tavernWheelBetInput) tavernWheelBetInput.disabled = tavernWheelVisualInProgress || Boolean(tavernWheelRound);
   if (tavernWheelBackBtn) tavernWheelBackBtn.disabled = tavernWheelVisualInProgress || Boolean(tavernWheelRound);
+  if (tavernSpectatorViewActive) {
+    tavernWheelColorButtons.forEach(button => { button.disabled = true; });
+    if (tavernWheelBetInput) tavernWheelBetInput.disabled = true;
+    if (tavernWheelBackBtn) tavernWheelBackBtn.disabled = true;
+    if (tavernWheelSpinBtn) tavernWheelSpinBtn.disabled = true;
+  }
 }
 
 function syncTavernDragonModalState(playerIndex = pendingTavernPlayerIndex) {
@@ -6215,6 +6227,136 @@ function syncTavernDragonModalState(playerIndex = pendingTavernPlayerIndex) {
   }
   if (tavernDragonCashoutBtn) tavernDragonCashoutBtn.disabled = !roundActive;
   if (tavernDragonBackBtn) tavernDragonBackBtn.disabled = roundActive;
+  if (tavernSpectatorViewActive) {
+    if (tavernDragonBetInput) tavernDragonBetInput.disabled = true;
+    if (tavernDragonStartBtn) tavernDragonStartBtn.disabled = true;
+    if (tavernDragonCashoutBtn) tavernDragonCashoutBtn.disabled = true;
+    if (tavernDragonBackBtn) tavernDragonBackBtn.disabled = true;
+  }
+}
+
+function broadcastTavernSpectatorEvent(playerIndex, type, payload = {}) {
+  if (typeof isHost === "undefined" || !isHost) return;
+  const spectatorIndex = players.findIndex((_, index) => index !== playerIndex);
+  if (spectatorIndex < 0) return;
+  if (typeof localPlayerIndex === "number" && spectatorIndex === localPlayerIndex) {
+    applyTavernSpectatorEventLocally(type, payload);
+    return;
+  }
+  if (typeof emitPrivateUiToPlayer === "function") {
+    emitPrivateUiToPlayer(spectatorIndex, type, { ...payload, spectator: true });
+  }
+}
+
+function applyTavernSpectatorEventLocally(type, payload = {}) {
+  if (type === "tavernSpectatorShow") openTavernSpectatorView(payload.playerIndex);
+  else if (type === "tavernSpectatorWheelShow") openTavernWheelSpectatorShow();
+  else if (type === "tavernSpectatorDragonShow") openTavernDragonSpectatorShow();
+  else if (type === "tavernSpectatorWheelSpin") openTavernWheelSpectatorVisual(payload);
+  else if (type === "tavernSpectatorWheelFinish") finishTavernWheelSpectatorVisual(payload);
+  else if (type === "tavernSpectatorDragonStart") openTavernDragonSpectatorVisual(payload);
+  else if (type === "tavernSpectatorDragonFinish") finishTavernDragonSpectatorVisual(payload);
+  else if (type === "tavernSpectatorClose") closeTavernSpectatorView();
+}
+
+function disableTavernButtonsForSpectator() {
+  [tavernModal, tavernWheelModal, tavernDragonModal].forEach(modal => {
+    modal?.querySelectorAll("button").forEach(button => { button.disabled = true; });
+  });
+  if (tavernWheelBetInput) tavernWheelBetInput.disabled = true;
+  if (tavernDragonBetInput) tavernDragonBetInput.disabled = true;
+}
+
+function openTavernSpectatorView(playerIndex) {
+  if (!tavernModal || !players[playerIndex]) return;
+  tavernSpectatorViewActive = true;
+  pendingTavernPlayerIndex = playerIndex;
+  if (tavernStatus) {
+    tavernStatus.textContent = `${players[playerIndex].name || `Игрок ${playerIndex + 1}`} сидит в таверне`;
+  }
+  if (tavernWheelModal) tavernWheelModal.style.display = "none";
+  if (tavernDragonModal) tavernDragonModal.style.display = "none";
+  tavernModal.style.display = "flex";
+  syncTavernModalState(playerIndex);
+  disableTavernButtonsForSpectator();
+}
+
+function openTavernWheelSpectatorShow() {
+  if (pendingTavernPlayerIndex === null) return;
+  tavernSpectatorViewActive = true;
+  if (tavernModal) tavernModal.style.display = "none";
+  if (tavernWheelModal) tavernWheelModal.style.display = "flex";
+  const playerName = players[pendingTavernPlayerIndex]?.name || "Игрок";
+  if (tavernWheelStatus) tavernWheelStatus.textContent = `${playerName} выбирает цвет и ставку...`;
+  disableTavernButtonsForSpectator();
+}
+
+function openTavernDragonSpectatorShow() {
+  if (pendingTavernPlayerIndex === null) return;
+  tavernSpectatorViewActive = true;
+  if (tavernModal) tavernModal.style.display = "none";
+  if (tavernDragonModal) tavernDragonModal.style.display = "flex";
+  const playerName = players[pendingTavernPlayerIndex]?.name || "Игрок";
+  if (tavernDragonStatus) tavernDragonStatus.textContent = `${playerName} делает ставку...`;
+  disableTavernButtonsForSpectator();
+}
+
+function openTavernWheelSpectatorVisual(payload = {}) {
+  if (pendingTavernPlayerIndex === null) return;
+  tavernSpectatorViewActive = true;
+  if (tavernModal) tavernModal.style.display = "none";
+  if (tavernWheelModal) tavernWheelModal.style.display = "flex";
+  const playerName = players[pendingTavernPlayerIndex]?.name || "Игрок";
+  const colorLabel = payload.chosenColor === "red" ? "красное" : "чёрное";
+  if (tavernWheelStatus) {
+    tavernWheelStatus.textContent = `${playerName} ставит ${payload.bet ?? "?"} золота на ${colorLabel}. Колесо вращается...`;
+  }
+  beginTavernWheelSpinVisual(payload);
+  disableTavernButtonsForSpectator();
+}
+
+function finishTavernWheelSpectatorVisual(payload = {}) {
+  tavernWheelVisualInProgress = false;
+  const colorLabel = payload.outcomeColor === "red" ? "красное" : "чёрное";
+  if (tavernWheelStatus) {
+    tavernWheelStatus.textContent = payload.won
+      ? `Выпало ${colorLabel}. Победа: +${payload.payout || 0} золота.`
+      : `Выпало ${colorLabel}. Ставка ${payload.bet ?? "?"} золота проиграна.`;
+  }
+  syncTavernWheelModalState();
+  disableTavernButtonsForSpectator();
+}
+
+function openTavernDragonSpectatorVisual(payload = {}) {
+  if (pendingTavernPlayerIndex === null) return;
+  tavernSpectatorViewActive = true;
+  if (tavernModal) tavernModal.style.display = "none";
+  if (tavernDragonModal) tavernDragonModal.style.display = "flex";
+  beginTavernDragonVisual();
+  const playerName = players[pendingTavernPlayerIndex]?.name || "Игрок";
+  if (tavernDragonStatus) {
+    tavernDragonStatus.textContent = `${playerName} ставит ${payload.bet ?? "?"} золота. Дракончик набирает высоту...`;
+  }
+  disableTavernButtonsForSpectator();
+}
+
+function finishTavernDragonSpectatorVisual(payload = {}) {
+  finishTavernDragonVisual(payload);
+  const playerName = players[pendingTavernPlayerIndex]?.name || "Игрок";
+  if (tavernDragonStatus) {
+    tavernDragonStatus.textContent = payload.won
+      ? `${playerName} снял на ${(payload.multiplier || 1).toFixed(2)}× и получил ${payload.payout || 0} золота.`
+      : `${playerName}: КРАШ на ${(payload.multiplier || 1).toFixed(2)}×. Ставка ${payload.bet ?? "?"} потеряна.`;
+  }
+  disableTavernButtonsForSpectator();
+}
+
+function closeTavernSpectatorView() {
+  tavernSpectatorViewActive = false;
+  pendingTavernPlayerIndex = null;
+  if (tavernModal) tavernModal.style.display = "none";
+  if (tavernWheelModal) tavernWheelModal.style.display = "none";
+  if (tavernDragonModal) tavernDragonModal.style.display = "none";
 }
 
 function openTavernModal(playerIndex) {
@@ -6223,6 +6365,7 @@ function openTavernModal(playerIndex) {
   prepareBlockingModalTurn(playerIndex);
   if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
     emitPrivateUiToPlayer(playerIndex, "showTavernModal", { playerIndex });
+    broadcastTavernSpectatorEvent(playerIndex, "tavernSpectatorShow", { playerIndex });
     return;
   }
   if (tavernStatus) tavernStatus.textContent = "";
@@ -6230,6 +6373,7 @@ function openTavernModal(playerIndex) {
   tavernWheelModal.style.display = "none";
   tavernDragonModal.style.display = "none";
   tavernModal.style.display = "flex";
+  broadcastTavernSpectatorEvent(playerIndex, "tavernSpectatorShow", { playerIndex });
 }
 
 function closeTavernModal() {
@@ -6350,10 +6494,11 @@ function startTavernWheelSpin(playerIndex, rawBet, chosenColor) {
   tavernWheelRound = round;
   updatePlayerResources(playerIndex);
   if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
-    emitPrivateUiToPlayer(playerIndex, "startTavernWheelSpin", { landingIndex, chosenColor: color });
+    emitPrivateUiToPlayer(playerIndex, "startTavernWheelSpin", { landingIndex, chosenColor: color, bet });
   } else {
-    beginTavernWheelSpinVisual({ landingIndex, chosenColor: color });
+    beginTavernWheelSpinVisual({ landingIndex, chosenColor: color, bet });
   }
+  broadcastTavernSpectatorEvent(playerIndex, "tavernSpectatorWheelSpin", { landingIndex, chosenColor: color, bet });
   if (typeof emitStateNow === "function") emitStateNow(true);
 
   if (tavernWheelResolveTimer) clearTimeout(tavernWheelResolveTimer);
@@ -6365,12 +6510,13 @@ function startTavernWheelSpin(playerIndex, rawBet, chosenColor) {
     if (payout > 0) player.pocket.gold += payout;
     tavernWheelRound = null;
     updatePlayerResources(playerIndex);
-    const resultPayload = { won, payout, outcomeColor: round.outcomeColor };
+    const resultPayload = { won, payout, outcomeColor: round.outcomeColor, bet: round.bet };
     if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
       emitPrivateUiToPlayer(playerIndex, "finishTavernWheelSpin", resultPayload);
     } else {
       finishTavernWheelSpinVisual(resultPayload);
     }
+    broadcastTavernSpectatorEvent(playerIndex, "tavernSpectatorWheelFinish", resultPayload);
     if (typeof emitStateNow === "function") emitStateNow(true);
   }, TAVERN_WHEEL_SPIN_DURATION_MS);
   return true;
@@ -6445,12 +6591,13 @@ function finishTavernDragonRound(round, cashoutMultiplier = null) {
   if (won && player) player.pocket.gold += payout;
   tavernDragonRound = null;
   if (player) updatePlayerResources(round.playerIndex);
-  const resultPayload = { won, payout, multiplier: resultMultiplier };
+  const resultPayload = { won, payout, multiplier: resultMultiplier, bet: round.bet };
   if (shouldDelegatePrivateUiToPlayer(round.playerIndex)) {
     emitPrivateUiToPlayer(round.playerIndex, "finishTavernDragon", resultPayload);
   } else {
     finishTavernDragonVisual(resultPayload);
   }
+  broadcastTavernSpectatorEvent(round.playerIndex, "tavernSpectatorDragonFinish", resultPayload);
   if (typeof emitStateNow === "function") emitStateNow(true);
   return true;
 }
@@ -6478,10 +6625,11 @@ function startTavernDragonGame(playerIndex, rawBet) {
   tavernDragonRound = round;
   updatePlayerResources(playerIndex);
   if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
-    emitPrivateUiToPlayer(playerIndex, "startTavernDragon", {});
+    emitPrivateUiToPlayer(playerIndex, "startTavernDragon", { bet });
   } else {
     beginTavernDragonVisual();
   }
+  broadcastTavernSpectatorEvent(playerIndex, "tavernSpectatorDragonStart", { bet });
   if (typeof emitStateNow === "function") emitStateNow(true);
   tavernDragonResolveTimer = setTimeout(() => {
     finishTavernDragonRound(round, null);
@@ -6527,11 +6675,78 @@ if (tavernDrinkBeerBtn) {
     drinkTavernBeer();
   });
 }
-if (tavernWheelBtn) tavernWheelBtn.addEventListener("click", openTavernWheelModal);
-if (tavernDragonBtn) tavernDragonBtn.addEventListener("click", openTavernDragonModal);
-if (tavernCloseBtn) tavernCloseBtn.addEventListener("click", closeTavernModal);
-if (tavernWheelBackBtn) tavernWheelBackBtn.addEventListener("click", returnFromTavernWheel);
-if (tavernDragonBackBtn) tavernDragonBackBtn.addEventListener("click", returnFromTavernDragon);
+if (tavernWheelBtn) {
+  tavernWheelBtn.addEventListener("click", () => {
+    if (shouldRoutePrivateUiActionToHost(pendingTavernPlayerIndex)) {
+      emitPrivateUiActionToHost({
+        modalType: "tavern",
+        actionType: "openWheel",
+        playerIndex: pendingTavernPlayerIndex
+      });
+      return;
+    }
+    openTavernWheelModal();
+    broadcastTavernSpectatorEvent(pendingTavernPlayerIndex, "tavernSpectatorWheelShow", { playerIndex: pendingTavernPlayerIndex });
+  });
+}
+if (tavernDragonBtn) {
+  tavernDragonBtn.addEventListener("click", () => {
+    if (shouldRoutePrivateUiActionToHost(pendingTavernPlayerIndex)) {
+      emitPrivateUiActionToHost({
+        modalType: "tavern",
+        actionType: "openDragon",
+        playerIndex: pendingTavernPlayerIndex
+      });
+      return;
+    }
+    openTavernDragonModal();
+    broadcastTavernSpectatorEvent(pendingTavernPlayerIndex, "tavernSpectatorDragonShow", { playerIndex: pendingTavernPlayerIndex });
+  });
+}
+if (tavernCloseBtn) {
+  tavernCloseBtn.addEventListener("click", () => {
+    if (shouldRoutePrivateUiActionToHost(pendingTavernPlayerIndex)) {
+      emitPrivateUiActionToHost({
+        modalType: "tavern",
+        actionType: "closeTavern",
+        playerIndex: pendingTavernPlayerIndex
+      });
+      return;
+    }
+    closeTavernModal();
+    broadcastTavernSpectatorEvent(pendingTavernPlayerIndex, "tavernSpectatorClose", { playerIndex: pendingTavernPlayerIndex });
+  });
+}
+if (tavernWheelBackBtn) {
+  tavernWheelBackBtn.addEventListener("click", () => {
+    if (shouldRoutePrivateUiActionToHost(pendingTavernPlayerIndex)) {
+      emitPrivateUiActionToHost({
+        modalType: "tavern",
+        actionType: "backFromWheel",
+        playerIndex: pendingTavernPlayerIndex
+      });
+      returnFromTavernWheel();
+      return;
+    }
+    returnFromTavernWheel();
+    broadcastTavernSpectatorEvent(pendingTavernPlayerIndex, "tavernSpectatorShow", { playerIndex: pendingTavernPlayerIndex });
+  });
+}
+if (tavernDragonBackBtn) {
+  tavernDragonBackBtn.addEventListener("click", () => {
+    if (shouldRoutePrivateUiActionToHost(pendingTavernPlayerIndex)) {
+      emitPrivateUiActionToHost({
+        modalType: "tavern",
+        actionType: "backFromDragon",
+        playerIndex: pendingTavernPlayerIndex
+      });
+      returnFromTavernDragon();
+      return;
+    }
+    returnFromTavernDragon();
+    broadcastTavernSpectatorEvent(pendingTavernPlayerIndex, "tavernSpectatorShow", { playerIndex: pendingTavernPlayerIndex });
+  });
+}
 
 tavernWheelColorButtons.forEach(button => {
   button.addEventListener("click", () => {
@@ -6588,7 +6803,17 @@ if (tavernDragonCashoutBtn) {
 [tavernModal, tavernWheelModal, tavernDragonModal].forEach(modal => {
   if (!modal) return;
   modal.addEventListener("click", event => {
-    if (event.target === modal) closeTavernModal();
+    if (event.target !== modal) return;
+    if (shouldRoutePrivateUiActionToHost(pendingTavernPlayerIndex)) {
+      emitPrivateUiActionToHost({
+        modalType: "tavern",
+        actionType: "closeTavern",
+        playerIndex: pendingTavernPlayerIndex
+      });
+      return;
+    }
+    closeTavernModal();
+    broadcastTavernSpectatorEvent(pendingTavernPlayerIndex, "tavernSpectatorClose", { playerIndex: pendingTavernPlayerIndex });
   });
 });
 

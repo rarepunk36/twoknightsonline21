@@ -1332,6 +1332,46 @@ function performPrivateUiAction(action) {
       }
       if (actionType === "cashoutDragon" && typeof cashOutTavernDragon === "function") {
         cashOutTavernDragon(playerIndex);
+        return;
+      }
+      if (actionType === "closeTavern" && typeof closeTavernModal === "function") {
+        const canCloseTavern = !(typeof tavernWheelVisualInProgress !== "undefined" && tavernWheelVisualInProgress) &&
+          !(typeof tavernDragonVisualInProgress !== "undefined" && tavernDragonVisualInProgress) &&
+          !(typeof tavernWheelRound !== "undefined" && tavernWheelRound) &&
+          !(typeof tavernDragonRound !== "undefined" && tavernDragonRound);
+        closeTavernModal();
+        if (canCloseTavern && typeof broadcastTavernSpectatorEvent === "function") {
+          broadcastTavernSpectatorEvent(playerIndex, "tavernSpectatorClose", { playerIndex });
+        }
+        return;
+      }
+      if (actionType === "openWheel" && typeof openTavernWheelModal === "function") {
+        openTavernWheelModal();
+        if (typeof broadcastTavernSpectatorEvent === "function") {
+          broadcastTavernSpectatorEvent(playerIndex, "tavernSpectatorWheelShow", { playerIndex });
+        }
+        return;
+      }
+      if (actionType === "openDragon" && typeof openTavernDragonModal === "function") {
+        openTavernDragonModal();
+        if (typeof broadcastTavernSpectatorEvent === "function") {
+          broadcastTavernSpectatorEvent(playerIndex, "tavernSpectatorDragonShow", { playerIndex });
+        }
+        return;
+      }
+      if (actionType === "backFromWheel" && typeof returnFromTavernWheel === "function") {
+        returnFromTavernWheel();
+        if (typeof broadcastTavernSpectatorEvent === "function") {
+          broadcastTavernSpectatorEvent(playerIndex, "tavernSpectatorShow", { playerIndex });
+        }
+        return;
+      }
+      if (actionType === "backFromDragon" && typeof returnFromTavernDragon === "function") {
+        returnFromTavernDragon();
+        if (typeof broadcastTavernSpectatorEvent === "function") {
+          broadcastTavernSpectatorEvent(playerIndex, "tavernSpectatorShow", { playerIndex });
+        }
+        return;
       }
       return;
     }
@@ -1987,6 +2027,38 @@ if (socket) {
     }
     if (type === "finishTavernDragon" && typeof finishTavernDragonVisual === "function") {
       finishTavernDragonVisual(payload);
+      return;
+    }
+    if (type === "tavernSpectatorShow" && typeof openTavernSpectatorView === "function") {
+      openTavernSpectatorView(payload.playerIndex);
+      return;
+    }
+    if (type === "tavernSpectatorWheelShow" && typeof openTavernWheelSpectatorShow === "function") {
+      openTavernWheelSpectatorShow();
+      return;
+    }
+    if (type === "tavernSpectatorDragonShow" && typeof openTavernDragonSpectatorShow === "function") {
+      openTavernDragonSpectatorShow();
+      return;
+    }
+    if (type === "tavernSpectatorWheelSpin" && typeof openTavernWheelSpectatorVisual === "function") {
+      openTavernWheelSpectatorVisual(payload);
+      return;
+    }
+    if (type === "tavernSpectatorWheelFinish" && typeof finishTavernWheelSpectatorVisual === "function") {
+      finishTavernWheelSpectatorVisual(payload);
+      return;
+    }
+    if (type === "tavernSpectatorDragonStart" && typeof openTavernDragonSpectatorVisual === "function") {
+      openTavernDragonSpectatorVisual(payload);
+      return;
+    }
+    if (type === "tavernSpectatorDragonFinish" && typeof finishTavernDragonSpectatorVisual === "function") {
+      finishTavernDragonSpectatorVisual(payload);
+      return;
+    }
+    if (type === "tavernSpectatorClose" && typeof closeTavernSpectatorView === "function") {
+      closeTavernSpectatorView();
       return;
     }
     if (type === "showMageModal" && typeof openMageModal === "function" && typeof getMageSlotById === "function") {
