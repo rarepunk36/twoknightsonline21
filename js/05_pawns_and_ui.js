@@ -182,12 +182,12 @@ const TAVERN_WHEEL_SPIN_DURATION_MS = 3000;
 const TAVERN_DRAGON_MAX_PLAYS_PER_TURN = 2;
 const TAVERN_DRAGON_GROWTH_MS = 9000;
 const TAVERN_DRAGON_MAX_MULTIPLIER = 50;
-const TAVERN_FISHKA_MAX_PLAYS_PER_TURN = 2;
+const TAVERN_FISHKA_MAX_PLAYS_PER_TURN = 4;
 const TAVERN_FISHKA_SPIN_DURATION_MS = 3200;
-const TAVERN_FISHKA_SECTORS = [0, -300, 250, 0, 500, -300, 250, 1000, 0, 500, 250];
+const TAVERN_FISHKA_SECTORS = [0, -200, 250, 0, 500, -200, 250, 1000, 0, 500, 250];
 const TAVERN_FISHKA_SECTOR_COLORS = {
   0: "#5a4a3a",
-  [-300]: "#7c2d26",
+  [-200]: "#7c2d26",
   250: "#b3822e",
   500: "#c9943d",
   1000: "#2f7d4f"
@@ -6695,7 +6695,7 @@ function syncTavernFishkaModalState(playerIndex = pendingTavernPlayerIndex) {
 function openTavernFishkaModal() {
   if (pendingTavernPlayerIndex === null || !isPlayerAtTavern(pendingTavernPlayerIndex)) return;
   buildTavernFishkaWheel();
-  if (tavernFishkaStatus) tavernFishkaStatus.textContent = "Сектора: 0, −300, +250, +500, +1000 золота.";
+  if (tavernFishkaStatus) tavernFishkaStatus.textContent = "Сектора: 0, −200, +250, +500, +1000 золота.";
   if (tavernModal) tavernModal.style.display = "none";
   if (tavernFishkaModal) tavernFishkaModal.style.display = "flex";
   syncTavernFishkaModalState();
