@@ -397,6 +397,11 @@ function buildState() {
       y: entry.y,
       turnsRemaining: entry.turnsRemaining
     })),
+    rainbowSpawnTurns: shallowClone(rainbowSpawnTurns),
+    rainbowSpawnIndex,
+    flowerSpawnTurns: shallowClone(flowerSpawnTurns),
+    flowerSpawnIndex,
+    nextStoneSpawnTurn: typeof nextStoneSpawnTurn !== "undefined" ? nextStoneSpawnTurn : null,
     voidShardByPos: typeof voidShardByPos !== "undefined"
       ? Object.values(voidShardByPos).map(entry => ({
           key: entry.key,
@@ -818,6 +823,23 @@ function applyState(state) {
   upperWormhole = Object.prototype.hasOwnProperty.call(state, "upperWormhole") ? state.upperWormhole : upperWormhole;
   wormholeSpawnTurns = Array.isArray(state.wormholeSpawnTurns) ? state.wormholeSpawnTurns.slice() : wormholeSpawnTurns;
   wormholeSpawnIndex = Object.prototype.hasOwnProperty.call(state, "wormholeSpawnIndex") ? state.wormholeSpawnIndex : wormholeSpawnIndex;
+  if (Array.isArray(state.rainbowSpawnTurns)) {
+    rainbowSpawnTurns.length = 0;
+    rainbowSpawnTurns.push(...state.rainbowSpawnTurns);
+  }
+  if (typeof state.rainbowSpawnIndex === "number") {
+    rainbowSpawnIndex = state.rainbowSpawnIndex;
+  }
+  if (Array.isArray(state.flowerSpawnTurns)) {
+    flowerSpawnTurns.length = 0;
+    flowerSpawnTurns.push(...state.flowerSpawnTurns);
+  }
+  if (typeof state.flowerSpawnIndex === "number") {
+    flowerSpawnIndex = state.flowerSpawnIndex;
+  }
+  if (Object.prototype.hasOwnProperty.call(state, "nextStoneSpawnTurn")) {
+    nextStoneSpawnTurn = state.nextStoneSpawnTurn;
+  }
   if (Array.isArray(state.scheduledWorldEvents)) {
     scheduledWorldEvents = state.scheduledWorldEvents.map(event => ({ ...event }));
   }

@@ -1,0 +1,152 @@
+=== STATUS ===
+room=MAIN
+started=true
+isHost=true
+localPlayerIndex=0
+currentPlayerIndex=0
+movesRemaining=0
+lastDie=4:2
+lastRoll=6
+pendingTurnAdvance=true
+pendingTurnManualOnly=true
+pendingTurnRequiresManualConfirm=false
+blockingModalTurnPlayerIndex=0
+deferredPrivateTurnPlayerIndex=null
+delegatedTurnBlockPlayerIndex=null
+applyingRemoteState=false
+performingRemoteAction=false
+lastEvent=hostLocalAction:dom_click
+stateUpdateAt=1786824541488
+hostActionAt=1786824842270
+clientActionAt=-
+
+=== RESOURCE SPAWN ===
+turn=192
+emptyKeys=629
+requested=gold,resources,army
+picked=5,5 | 10,0 | 26,1
+placed=gold,resources,army
+placedCount=3
+reason=ok
+
+=== LOG ===
+[23:11:48] modalPrepared:p1:caller=at openLavka (https://twoknightsonline21-production.up.railway.app/js/05_pawns_and_ui.js?v=5cc3553e008ef05fd47936c603854ce6fc525db3:7090:3)
+[23:11:48] privateUi:showLavkaModal:p1:defer=1
+[23:11:48] privateUi:flashPrice:p1:defer=1 x2
+[23:11:50] turnBlockCloseRecv:p1:defer=1
+[23:11:50] modalResume:p1:pending=true:prepared=true:defer=false:blocking=false
+[23:11:51] hostAction:endTurn:p1
+[23:11:51] hostEndTurnClick:p1
+[23:11:51] turnAdvanceCommit:p1:manual=true
+[23:11:51] completeTurnAdvance:p1:bti=1:pta=true:ptmo=true
+[23:11:51] autoRollScheduled:p0
+[23:11:52] autoRollStart:p0
+[23:11:52] rollResult:p0:1+1+3=5
+[23:11:54] turnAdvanceRequested:p0:manualOnly=false:pendingManualOnly=false:bti=0:moves=0
+[23:11:54] turnAdvanceCommit:p0:manual=false
+[23:11:54] completeTurnAdvance:p0:bti=0:pta=true:ptmo=false
+[23:11:54] autoRollScheduled:p0
+[23:11:56] autoRollStart:p0
+[23:11:56] rollResult:p0:3+4+3=10
+[23:11:57] turnAdvanceRequested:p0:manualOnly=false:pendingManualOnly=false:bti=0:moves=0
+[23:11:57] turnAdvanceCommit:p0:manual=false
+[23:11:57] completeTurnAdvance:p0:bti=0:pta=true:ptmo=false
+[23:11:57] resourceSpawn:turn=180 empty=631 requested=gold,resources,army,gold,resources,army picked=24,14|9,2|6,11|4,19|16,19|0,4 placed=gold,resources,army,gold,resources,army reason=ok
+[23:11:57] autoRollScheduled:p1
+[23:11:59] autoRollStart:p1
+[23:11:59] rollResult:p1:3+6+6=15
+[23:12:04] turnAdvanceRequested:p1:manualOnly=false:pendingManualOnly=false:bti=1:moves=0
+[23:12:04] turnAdvanceCommit:p1:manual=false
+[23:12:04] completeTurnAdvance:p1:bti=1:pta=true:ptmo=false
+[23:12:04] autoRollScheduled:p0
+[23:12:06] autoRollStart:p0
+[23:12:06] rollResult:p0:5+2+3=10
+[23:12:09] turnAdvanceRequested:p0:manualOnly=false:pendingManualOnly=false:bti=0:moves=0
+[23:12:09] turnAdvanceCommit:p0:manual=false
+[23:12:09] completeTurnAdvance:p0:bti=0:pta=true:ptmo=false
+[23:12:09] autoRollScheduled:p1
+[23:12:10] autoRollStart:p1
+[23:12:10] rollResult:p1:1+2+6=9
+[23:12:15] turnAdvanceRequested:p1:manualOnly=false:pendingManualOnly=false:bti=1:moves=0
+[23:12:15] turnAdvanceCommit:p1:manual=false
+[23:12:15] completeTurnAdvance:p1:bti=1:pta=true:ptmo=false
+[23:12:15] autoRollScheduled:p0
+[23:12:17] autoRollStart:p0
+[23:12:17] rollResult:p0:1+1+3=5
+[23:12:18] turnAdvanceRequested:p0:manualOnly=false:pendingManualOnly=false:bti=0:moves=0
+[23:12:18] turnAdvanceCommit:p0:manual=false
+[23:12:18] completeTurnAdvance:p0:bti=0:pta=true:ptmo=false
+[23:12:19] autoRollScheduled:p0
+[23:12:20] autoRollStart:p0
+[23:12:20] rollResult:p0:5+6+3=14
+[23:12:21] turnAdvanceRequested:p0:manualOnly=false:pendingManualOnly=false:bti=0:moves=0
+[23:12:21] turnAdvanceCommit:p0:manual=false
+[23:12:21] completeTurnAdvance:p0:bti=0:pta=true:ptmo=false
+[23:12:21] autoRollScheduled:p1
+[23:12:22] autoRollStart:p1
+[23:12:22] rollResult:p1:5+5+6=16
+[23:12:52] modalPrepared:p1:caller=at openStoneModal (https://twoknightsonline21-production.up.railway.app/js/05_pawns_and_ui.js?v=5cc3553e008ef05fd47936c603854ce6fc525db3:5715:3)
+[23:12:52] privateUi:showStoneModal:p1:defer=1
+[23:12:52] turnAdvanceRequested:p1:manualOnly=false:pendingManualOnly=true:bti=1:moves=0
+[23:12:53] modalPrepared:p1:caller=at openStoneResultModal (https://twoknightsonline21-production.up.railway.app/js/05_pawns_and_ui.js?v=5cc3553e008ef05fd47936c603854ce6fc525db3:5734:3)
+[23:12:53] privateUi:showStoneResultModal:p1:defer=1
+[23:12:53] modalResume:p1:pending=true:prepared=true:defer=true:blocking=false
+[23:12:53] turnBlockCloseRecv:p1:defer=1
+[23:12:53] modalResume:p1:pending=true:prepared=true:defer=false:blocking=false
+[23:12:56] hostAction:endTurn:p1
+[23:12:56] hostEndTurnClick:p1
+[23:12:56] turnAdvanceCommit:p1:manual=true
+[23:12:56] completeTurnAdvance:p1:bti=1:pta=true:ptmo=true
+[23:12:56] resourceSpawn:turn=186 empty=630 requested=gold,resources,army,gold,resources,army picked=3,14|7,23|20,17|0,20|25,11|10,12 placed=gold,resources,army,gold,resources,army reason=ok
+[23:12:56] autoRollScheduled:p1
+[23:12:58] autoRollStart:p1
+[23:12:58] rollResult:p1:2+5+7=14
+[23:13:03] turnAdvanceRequested:p1:manualOnly=false:pendingManualOnly=false:bti=1:moves=0
+[23:13:03] turnAdvanceCommit:p1:manual=false
+[23:13:03] completeTurnAdvance:p1:bti=1:pta=true:ptmo=false
+[23:13:03] autoRollScheduled:p1
+[23:13:05] autoRollStart:p1
+[23:13:05] rollResult:p1:1+4+7=12
+[23:13:08] turnAdvanceRequested:p1:manualOnly=false:pendingManualOnly=false:bti=1:moves=0
+[23:13:08] turnAdvanceCommit:p1:manual=false
+[23:13:08] completeTurnAdvance:p1:bti=1:pta=true:ptmo=false
+[23:13:08] autoRollScheduled:p1
+[23:13:09] autoRollStart:p1
+[23:13:09] rollResult:p1:6+2+7=15
+[23:13:12] turnAdvanceRequested:p1:manualOnly=false:pendingManualOnly=false:bti=1:moves=0
+[23:13:12] turnAdvanceCommit:p1:manual=false
+[23:13:12] completeTurnAdvance:p1:bti=1:pta=true:ptmo=false
+[23:13:12] autoRollScheduled:p1
+[23:13:14] autoRollStart:p1
+[23:13:14] rollResult:p1:3+2+7=12
+[23:13:16] modalPrepared:p1:caller=at openWorkshop (https://twoknightsonline21-production.up.railway.app/js/05_pawns_and_ui.js?v=5cc3553e008ef05fd47936c603854ce6fc525db3:7217:3)
+[23:13:16] privateUi:showWorkshopModal:p1:defer=1
+[23:13:16] turnAdvanceRequested:p1:manualOnly=false:pendingManualOnly=true:bti=1:moves=0
+[23:13:19] privateUi:showPickupToast:p1:defer=1
+[23:13:19] modalPrepared:p1:caller=at openWorkshop (https://twoknightsonline21-production.up.railway.app/js/05_pawns_and_ui.js?v=5cc3553e008ef05fd47936c603854ce6fc525db3:7217:3)
+[23:13:19] privateUi:showWorkshopModal:p1:defer=1
+[23:13:19] privateUi:flashPrice:p1:defer=1 x2
+[23:13:23] turnBlockCloseRecv:p1:defer=1
+[23:13:23] modalResume:p1:pending=true:prepared=true:defer=false:blocking=false
+[23:13:23] hostAction:endTurn:p1
+[23:13:23] hostEndTurnClick:p1
+[23:13:23] turnAdvanceCommit:p1:manual=true
+[23:13:23] completeTurnAdvance:p1:bti=1:pta=true:ptmo=true
+[23:13:23] autoRollScheduled:p1
+[23:13:25] autoRollStart:p1
+[23:13:25] rollResult:p1:3+6+4=13
+[23:13:28] turnAdvanceRequested:p1:manualOnly=false:pendingManualOnly=false:bti=1:moves=0
+[23:13:28] turnAdvanceCommit:p1:manual=false
+[23:13:28] completeTurnAdvance:p1:bti=1:pta=true:ptmo=false
+[23:13:28] autoRollScheduled:p1
+[23:13:30] autoRollStart:p1
+[23:13:30] rollResult:p1:6+1+3=10
+[23:13:33] turnAdvanceRequested:p1:manualOnly=false:pendingManualOnly=false:bti=1:moves=0
+[23:13:33] turnAdvanceCommit:p1:manual=false
+[23:13:33] completeTurnAdvance:p1:bti=1:pta=true:ptmo=false
+[23:13:33] resourceSpawn:turn=192 empty=629 requested=gold,resources,army picked=5,5|10,0|26,1 placed=gold,resources,army reason=ok
+[23:13:33] autoRollScheduled:p0
+[23:13:34] autoRollStart:p0
+[23:13:34] rollResult:p0:4+2+0=6
+[23:13:35] turnAdvanceRequested:p0:manualOnly=false:pendingManualOnly=true:bti=0:moves=0
+[23:13:48] modalResume:p0:pending=true:prepared=true:defer=false:blocking=false
