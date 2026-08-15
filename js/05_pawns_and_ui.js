@@ -32,6 +32,8 @@ const players = [
     luckTurnsRemaining: 0,
     invulnTurnsRemaining: 0,
     cloverCount: 0,
+    dragonChipCount: 0,
+    tavernFishkaPlaysThisTurn: 0,
     trollClubCount: 0,
     flowerCount: 0,
     voidShardCount: 0,
@@ -97,6 +99,8 @@ const players = [
     luckTurnsRemaining: 0,
     invulnTurnsRemaining: 0,
     cloverCount: 0,
+    dragonChipCount: 0,
+    tavernFishkaPlaysThisTurn: 0,
     trollClubCount: 0,
     flowerCount: 0,
     voidShardCount: 0,
@@ -178,6 +182,16 @@ const TAVERN_WHEEL_SPIN_DURATION_MS = 3000;
 const TAVERN_DRAGON_MAX_PLAYS_PER_TURN = 2;
 const TAVERN_DRAGON_GROWTH_MS = 9000;
 const TAVERN_DRAGON_MAX_MULTIPLIER = 50;
+const TAVERN_FISHKA_MAX_PLAYS_PER_TURN = 2;
+const TAVERN_FISHKA_SPIN_DURATION_MS = 3200;
+const TAVERN_FISHKA_SECTORS = [0, -300, 250, 0, 500, -300, 250, 1000, 0, 500, 250];
+const TAVERN_FISHKA_SECTOR_COLORS = {
+  0: "#5a4a3a",
+  [-300]: "#7c2d26",
+  250: "#b3822e",
+  500: "#c9943d",
+  1000: "#2f7d4f"
+};
 const BALLISTA_COST = 600;
 const BALLISTA_LEVEL_2_COST = 1000;
 const BOLT_COST = 125;
@@ -720,6 +734,7 @@ const INVENTORY_ITEMS = [
   {key: "potion-luck", label: "Зелье удачи", icon: "potion_luck.png", count: player => player.luckPotionCount || 0, useAction: "potion-luck"},
   {key: "potion-invuln", label: "Зелье неприкосновенности", icon: "potion_invis.png", count: player => player.invulnPotionCount || 0, useAction: "potion-invuln"},
   {key: "clover", label: "Клевер", icon: "clover.png", count: player => player.cloverCount || 0, useAction: "clover"},
+  {key: "fishka", label: "Фишка Дракона", icon: "fishka.png", count: player => player.dragonChipCount || 0},
   {key: "flower", label: "Таинственный цветок", icon: "mystic_flower.png", count: player => player.flowerCount || 0},
   {key: "void-shard", label: "Осколок пустоты", icon: "void_shard.png", count: player => player.voidShardCount || 0, useAction: "void-shard"},
   {key: "token", label: "Жетон", icon: "token.png", count: player => player.tokenCount || 0},
@@ -3510,7 +3525,7 @@ function resetCellForVisibleRender(key) {
   cell.classList.remove(
     "resource", "important", "owned", "reachable", "barbarian", "special", "forest",
     "resource-disabled", "mercenary", "thief", "cutthroat", "messenger", "caravan", "werewolf", "mage", "portal", "wormhole",
-    "stairs", "flower", "clover", "stone", "rainbow-stone", "void-shard", "master", "troll", "troll-cave", "tavern", "tavern-node", "treasure",
+    "stairs", "flower", "clover", "stone", "rainbow-stone", "void-shard", "master", "troll", "troll-cave", "tavern", "tavern-node", "treasure", "fishka",
     "troll-cave-numbered", "troll-cave-entrance", "troll-cave-pit", "troll-cave-loot", "troll-cave-troll",
     "world-cell-hidden"
   );
@@ -3631,6 +3646,15 @@ function renderUpperWorldView() {
       cell.classList.add("clover", "important");
       cell.textContent = "";
       setCellIcon(cell, "clover.png", "Клевер");
+    }
+  }
+  if (typeof fishka !== "undefined" && fishka?.key) {
+    const cell = grid[fishka.key];
+    if (cell) {
+      cell.classList.remove("inactive");
+      cell.classList.add("fishka", "important");
+      cell.textContent = "";
+      setCellIcon(cell, "fishka.png", "Фишка Дракона");
     }
   }
   Object.values(stoneByPos).forEach(entry => {
@@ -6133,6 +6157,9 @@ let tavernDragonResolveTimer = null;
 let tavernDragonVisualFrame = null;
 let tavernDragonVisualStartedAt = 0;
 let tavernDragonVisualInProgress = false;
+let tavernFishkaRound = null;
+let tavernFishkaResolveTimer = null;
+let tavernFishkaVisualInProgress = false;
 let tavernGameSequenceId = 0;
 
 function isTavernSafeCell(key, layer = WORLD_LAYER_UPPER) {
@@ -6172,8 +6199,12 @@ function syncTavernModalState(playerIndex = pendingTavernPlayerIndex) {
   if (tavernDragonBtn) {
     tavernDragonBtn.disabled = (player.tavernDragonPlaysThisTurn || 0) >= TAVERN_DRAGON_MAX_PLAYS_PER_TURN;
   }
+  if (tavernFishkaBtn) {
+    tavernFishkaBtn.disabled = (player.dragonChipCount || 0) <= 0 ||
+      (player.tavernFishkaPlaysThisTurn || 0) >= TAVERN_FISHKA_MAX_PLAYS_PER_TURN;
+  }
   if (tavernSpectatorViewActive) {
-    [tavernDrinkBeerBtn, tavernWheelBtn, tavernDragonBtn].forEach(button => {
+    [tavernDrinkBeerBtn, tavernWheelBtn, tavernDragonBtn, tavernFishkaBtn].forEach(button => {
       if (button) button.disabled = true;
     });
   }
@@ -6256,11 +6287,49 @@ function applyTavernSpectatorEventLocally(type, payload = {}) {
   else if (type === "tavernSpectatorWheelFinish") finishTavernWheelSpectatorVisual(payload);
   else if (type === "tavernSpectatorDragonStart") openTavernDragonSpectatorVisual(payload);
   else if (type === "tavernSpectatorDragonFinish") finishTavernDragonSpectatorVisual(payload);
+  else if (type === "tavernSpectatorFishkaShow") openTavernFishkaSpectatorShow();
+  else if (type === "tavernSpectatorFishkaSpin") openTavernFishkaSpectatorVisual(payload);
+  else if (type === "tavernSpectatorFishkaFinish") finishTavernFishkaSpectatorVisual(payload);
   else if (type === "tavernSpectatorClose") closeTavernSpectatorView();
 }
 
+function openTavernFishkaSpectatorShow() {
+  if (pendingTavernPlayerIndex === null) return;
+  tavernSpectatorViewActive = true;
+  buildTavernFishkaWheel();
+  if (tavernModal) tavernModal.style.display = "none";
+  if (tavernFishkaModal) tavernFishkaModal.style.display = "flex";
+  const playerName = players[pendingTavernPlayerIndex]?.name || "Игрок";
+  if (tavernFishkaStatus) tavernFishkaStatus.textContent = `${playerName} выбирает колесо фишек...`;
+  disableTavernButtonsForSpectator();
+}
+
+function openTavernFishkaSpectatorVisual(payload = {}) {
+  if (pendingTavernPlayerIndex === null) return;
+  tavernSpectatorViewActive = true;
+  buildTavernFishkaWheel();
+  if (tavernModal) tavernModal.style.display = "none";
+  if (tavernFishkaModal) tavernFishkaModal.style.display = "flex";
+  const playerName = players[pendingTavernPlayerIndex]?.name || "Игрок";
+  if (tavernFishkaStatus) tavernFishkaStatus.textContent = `${playerName} тратит фишку. Колесо вращается...`;
+  beginTavernFishkaSpinVisual(payload);
+  disableTavernButtonsForSpectator();
+}
+
+function finishTavernFishkaSpectatorVisual(payload = {}) {
+  finishTavernFishkaSpinVisual(payload);
+  const playerName = players[pendingTavernPlayerIndex]?.name || "Игрок";
+  const outcome = Number(payload.outcome) || 0;
+  if (tavernFishkaStatus) {
+    if (outcome > 0) tavernFishkaStatus.textContent = `${playerName}: сектор +${outcome}, +${payload.goldDelta || outcome} золота.`;
+    else if (outcome < 0) tavernFishkaStatus.textContent = `${playerName}: сектор ${outcome}, −${payload.goldDelta || 0} золота.`;
+    else tavernFishkaStatus.textContent = `${playerName}: сектор 0, ничего.`;
+  }
+  disableTavernButtonsForSpectator();
+}
+
 function disableTavernButtonsForSpectator() {
-  [tavernModal, tavernWheelModal, tavernDragonModal].forEach(modal => {
+  [tavernModal, tavernWheelModal, tavernDragonModal, tavernFishkaModal].forEach(modal => {
     modal?.querySelectorAll("button").forEach(button => { button.disabled = true; });
   });
   if (tavernWheelBetInput) tavernWheelBetInput.disabled = true;
@@ -6276,6 +6345,7 @@ function openTavernSpectatorView(playerIndex) {
   }
   if (tavernWheelModal) tavernWheelModal.style.display = "none";
   if (tavernDragonModal) tavernDragonModal.style.display = "none";
+  if (tavernFishkaModal) tavernFishkaModal.style.display = "none";
   tavernModal.style.display = "flex";
   syncTavernModalState(playerIndex);
   disableTavernButtonsForSpectator();
@@ -6357,6 +6427,7 @@ function closeTavernSpectatorView() {
   if (tavernModal) tavernModal.style.display = "none";
   if (tavernWheelModal) tavernWheelModal.style.display = "none";
   if (tavernDragonModal) tavernDragonModal.style.display = "none";
+  if (tavernFishkaModal) tavernFishkaModal.style.display = "none";
 }
 
 function openTavernModal(playerIndex) {
@@ -6372,15 +6443,17 @@ function openTavernModal(playerIndex) {
   syncTavernModalState(playerIndex);
   tavernWheelModal.style.display = "none";
   tavernDragonModal.style.display = "none";
+  tavernFishkaModal.style.display = "none";
   tavernModal.style.display = "flex";
   broadcastTavernSpectatorEvent(playerIndex, "tavernSpectatorShow", { playerIndex });
 }
 
 function closeTavernModal() {
-  if (tavernWheelVisualInProgress || tavernDragonVisualInProgress || tavernWheelRound || tavernDragonRound) return;
+  if (tavernWheelVisualInProgress || tavernDragonVisualInProgress || tavernFishkaVisualInProgress || tavernWheelRound || tavernDragonRound || tavernFishkaRound) return;
   if (tavernModal) tavernModal.style.display = "none";
   if (tavernWheelModal) tavernWheelModal.style.display = "none";
   if (tavernDragonModal) tavernDragonModal.style.display = "none";
+  if (tavernFishkaModal) tavernFishkaModal.style.display = "none";
   pendingTavernPlayerIndex = null;
   resumeTurnFlowAfterModalChange();
 }
@@ -6580,6 +6653,144 @@ function finishTavernDragonVisual(payload = {}) {
   syncTavernDragonModalState();
 }
 
+function buildTavernFishkaWheel() {
+  if (!tavernFishkaWheel || tavernFishkaWheel.dataset.built === "1") return;
+  tavernFishkaWheel.dataset.built = "1";
+  const sectorAngle = 360 / TAVERN_FISHKA_SECTORS.length;
+  const stops = TAVERN_FISHKA_SECTORS.map((value, index) => {
+    const color = TAVERN_FISHKA_SECTOR_COLORS[value] || "#5a4a3a";
+    return `${color} ${(index * sectorAngle).toFixed(3)}deg ${((index + 1) * sectorAngle).toFixed(3)}deg`;
+  });
+  tavernFishkaWheel.style.background = `conic-gradient(${stops.join(", ")})`;
+  TAVERN_FISHKA_SECTORS.forEach((value, index) => {
+    const label = document.createElement("span");
+    label.className = "fishka-sector-label";
+    const angle = index * sectorAngle + sectorAngle / 2;
+    label.textContent = value > 0 ? `+${value}` : String(value);
+    label.style.transform = `rotate(${angle.toFixed(2)}deg) translateY(-98px) rotate(-${angle.toFixed(2)}deg)`;
+    tavernFishkaWheel.appendChild(label);
+  });
+}
+
+function syncTavernFishkaModalState(playerIndex = pendingTavernPlayerIndex) {
+  const player = players[playerIndex];
+  if (!player) return;
+  const chips = Math.max(0, player.dragonChipCount || 0);
+  const plays = Math.max(0, player.tavernFishkaPlaysThisTurn || 0);
+  if (tavernFishkaCountValue) tavernFishkaCountValue.textContent = String(chips);
+  if (tavernFishkaPlaysValue) tavernFishkaPlaysValue.textContent = `${plays} / ${TAVERN_FISHKA_MAX_PLAYS_PER_TURN}`;
+  if (tavernFishkaSpinBtn) {
+    tavernFishkaSpinBtn.disabled = tavernFishkaVisualInProgress || Boolean(tavernFishkaRound) ||
+      chips <= 0 || plays >= TAVERN_FISHKA_MAX_PLAYS_PER_TURN;
+  }
+  if (tavernFishkaBackBtn) {
+    tavernFishkaBackBtn.disabled = tavernFishkaVisualInProgress || Boolean(tavernFishkaRound);
+  }
+  if (tavernSpectatorViewActive) {
+    if (tavernFishkaSpinBtn) tavernFishkaSpinBtn.disabled = true;
+    if (tavernFishkaBackBtn) tavernFishkaBackBtn.disabled = true;
+  }
+}
+
+function openTavernFishkaModal() {
+  if (pendingTavernPlayerIndex === null || !isPlayerAtTavern(pendingTavernPlayerIndex)) return;
+  buildTavernFishkaWheel();
+  if (tavernFishkaStatus) tavernFishkaStatus.textContent = "Сектора: 0, −300, +250, +500, +1000 золота.";
+  if (tavernModal) tavernModal.style.display = "none";
+  if (tavernFishkaModal) tavernFishkaModal.style.display = "flex";
+  syncTavernFishkaModalState();
+}
+
+function returnFromTavernFishka() {
+  if (tavernFishkaVisualInProgress || tavernFishkaRound) return;
+  if (tavernFishkaModal) tavernFishkaModal.style.display = "none";
+  if (tavernModal) tavernModal.style.display = "flex";
+  syncTavernModalState();
+}
+
+function beginTavernFishkaSpinVisual(payload = {}) {
+  tavernFishkaVisualInProgress = true;
+  if (tavernFishkaModal) tavernFishkaModal.style.display = "flex";
+  const landingIndex = Math.max(0, Math.min(TAVERN_FISHKA_SECTORS.length - 1, Number(payload.landingIndex) || 0));
+  if (tavernFishkaStatus) tavernFishkaStatus.textContent = "Колесо вращается...";
+  if (tavernFishkaWheel) {
+    const sectorAngle = 360 / TAVERN_FISHKA_SECTORS.length;
+    const landingAngle = landingIndex * sectorAngle + sectorAngle / 2;
+    tavernFishkaWheel.style.transition = "none";
+    tavernFishkaWheel.style.transform = "rotate(0deg)";
+    void tavernFishkaWheel.offsetWidth;
+    tavernFishkaWheel.style.transition = `transform ${TAVERN_FISHKA_SPIN_DURATION_MS}ms cubic-bezier(0.12, 0.72, 0.12, 1)`;
+    tavernFishkaWheel.style.transform = `rotate(${1440 + 360 - landingAngle}deg)`;
+  }
+  syncTavernFishkaModalState();
+}
+
+function finishTavernFishkaSpinVisual(payload = {}) {
+  tavernFishkaVisualInProgress = false;
+  const outcome = Number(payload.outcome) || 0;
+  if (tavernFishkaStatus) {
+    if (outcome > 0) {
+      tavernFishkaStatus.textContent = `Сектор +${outcome}: +${payload.goldDelta || outcome} золота.`;
+    } else if (outcome < 0) {
+      tavernFishkaStatus.textContent = `Сектор ${outcome}: −${payload.goldDelta || 0} золота.`;
+    } else {
+      tavernFishkaStatus.textContent = "Сектор 0: ничего не изменилось.";
+    }
+  }
+  syncTavernFishkaModalState();
+}
+
+function startTavernFishkaSpin(playerIndex) {
+  const player = players[playerIndex];
+  if (!player || playerIndex !== currentPlayerIndex || !isPlayerAtTavern(playerIndex)) return false;
+  if (tavernFishkaRound || (player.tavernFishkaPlaysThisTurn || 0) >= TAVERN_FISHKA_MAX_PLAYS_PER_TURN) return false;
+  if ((player.dragonChipCount || 0) <= 0) return false;
+
+  player.dragonChipCount = Math.max(0, (player.dragonChipCount || 0) - 1);
+  player.tavernFishkaPlaysThisTurn = (player.tavernFishkaPlaysThisTurn || 0) + 1;
+  const landingIndex = Math.min(
+    TAVERN_FISHKA_SECTORS.length - 1,
+    Math.floor(getTavernRandomUnit() * TAVERN_FISHKA_SECTORS.length)
+  );
+  const outcome = TAVERN_FISHKA_SECTORS[landingIndex];
+  const round = { id: ++tavernGameSequenceId, playerIndex, landingIndex, outcome };
+  tavernFishkaRound = round;
+  updatePlayerResources(playerIndex);
+  updateInventory(playerIndex);
+  if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
+    emitPrivateUiToPlayer(playerIndex, "startTavernFishkaSpin", { landingIndex });
+  } else {
+    beginTavernFishkaSpinVisual({ landingIndex });
+  }
+  broadcastTavernSpectatorEvent(playerIndex, "tavernSpectatorFishkaSpin", { landingIndex });
+  if (typeof emitStateNow === "function") emitStateNow(true);
+
+  if (tavernFishkaResolveTimer) clearTimeout(tavernFishkaResolveTimer);
+  tavernFishkaResolveTimer = setTimeout(() => {
+    tavernFishkaResolveTimer = null;
+    if (!tavernFishkaRound || tavernFishkaRound.id !== round.id) return;
+    tavernFishkaRound = null;
+    let goldDelta = 0;
+    if (round.outcome > 0) {
+      goldDelta = round.outcome;
+      player.pocket.gold += goldDelta;
+    } else if (round.outcome < 0) {
+      goldDelta = Math.min(Math.abs(round.outcome), getTotalGold(player));
+      player.pocket.gold = Math.max(0, player.pocket.gold - goldDelta);
+    }
+    updatePlayerResources(playerIndex);
+    const resultPayload = { outcome: round.outcome, goldDelta };
+    if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
+      emitPrivateUiToPlayer(playerIndex, "finishTavernFishkaSpin", resultPayload);
+    } else {
+      finishTavernFishkaSpinVisual(resultPayload);
+    }
+    broadcastTavernSpectatorEvent(playerIndex, "tavernSpectatorFishkaFinish", resultPayload);
+    if (typeof emitStateNow === "function") emitStateNow(true);
+  }, TAVERN_FISHKA_SPIN_DURATION_MS);
+  return true;
+}
+
 function finishTavernDragonRound(round, cashoutMultiplier = null) {
   if (!round || !tavernDragonRound || tavernDragonRound.id !== round.id) return false;
   if (tavernDragonResolveTimer) clearTimeout(tavernDragonResolveTimer);
@@ -6748,6 +6959,51 @@ if (tavernDragonBackBtn) {
   });
 }
 
+if (tavernFishkaBtn) {
+  tavernFishkaBtn.addEventListener("click", () => {
+    if (shouldRoutePrivateUiActionToHost(pendingTavernPlayerIndex)) {
+      emitPrivateUiActionToHost({
+        modalType: "tavern",
+        actionType: "openFishka",
+        playerIndex: pendingTavernPlayerIndex
+      });
+      return;
+    }
+    openTavernFishkaModal();
+    broadcastTavernSpectatorEvent(pendingTavernPlayerIndex, "tavernSpectatorFishkaShow", { playerIndex: pendingTavernPlayerIndex });
+  });
+}
+
+if (tavernFishkaSpinBtn) {
+  tavernFishkaSpinBtn.addEventListener("click", () => {
+    if (shouldRoutePrivateUiActionToHost(pendingTavernPlayerIndex)) {
+      emitPrivateUiActionToHost({
+        modalType: "tavern",
+        actionType: "spinFishka",
+        playerIndex: pendingTavernPlayerIndex
+      });
+      return;
+    }
+    startTavernFishkaSpin(pendingTavernPlayerIndex);
+  });
+}
+
+if (tavernFishkaBackBtn) {
+  tavernFishkaBackBtn.addEventListener("click", () => {
+    if (shouldRoutePrivateUiActionToHost(pendingTavernPlayerIndex)) {
+      emitPrivateUiActionToHost({
+        modalType: "tavern",
+        actionType: "backFromFishka",
+        playerIndex: pendingTavernPlayerIndex
+      });
+      returnFromTavernFishka();
+      return;
+    }
+    returnFromTavernFishka();
+    broadcastTavernSpectatorEvent(pendingTavernPlayerIndex, "tavernSpectatorShow", { playerIndex: pendingTavernPlayerIndex });
+  });
+}
+
 tavernWheelColorButtons.forEach(button => {
   button.addEventListener("click", () => {
     if (tavernWheelVisualInProgress) return;
@@ -6800,7 +7056,7 @@ if (tavernDragonCashoutBtn) {
   });
 }
 
-[tavernModal, tavernWheelModal, tavernDragonModal].forEach(modal => {
+[tavernModal, tavernWheelModal, tavernDragonModal, tavernFishkaModal].forEach(modal => {
   if (!modal) return;
   modal.addEventListener("click", event => {
     if (event.target !== modal) return;
@@ -9137,6 +9393,7 @@ function getPlayerBattleDroppableItems(player) {
   addCountItem("luckPotionCount", "Зелье удачи");
   addCountItem("invulnPotionCount", "Зелье неприкосновенности");
   addCountItem("cloverCount", "Клевер");
+  addCountItem("dragonChipCount", "Фишка Дракона");
   addCountItem("flowerCount", "Таинственный цветок");
   addCountItem("voidShardCount", "Осколок пустоты");
   addCountItem("tokenCount", "Жетон");
@@ -10688,6 +10945,7 @@ const TURN_BLOCKING_MODALS = [
   () => tavernModal,
   () => tavernWheelModal,
   () => tavernDragonModal,
+  () => tavernFishkaModal,
   () => castleModal
 ];
 
@@ -10850,6 +11108,7 @@ function completeTurnAdvance() {
     players[currentPlayerIndex].ballistaShotsThisTurn = 0;
     players[currentPlayerIndex].tavernWheelPlaysThisTurn = 0;
     players[currentPlayerIndex].tavernDragonPlaysThisTurn = 0;
+    players[currentPlayerIndex].tavernFishkaPlaysThisTurn = 0;
   }
   voidShardModePlayerIndex = null;
   tickAllTimedBuffs();
@@ -10946,6 +11205,9 @@ function completeTurnAdvance() {
   if (typeof handleCloverTimers === "function") {
     handleCloverTimers();
   }
+  if (typeof handleFishkaTimers === "function") {
+    handleFishkaTimers();
+  }
   if (typeof handleVoidShardTimers === "function") {
     handleVoidShardTimers();
   }
@@ -10962,6 +11224,9 @@ function completeTurnAdvance() {
   }
   if (typeof handleCloverSpawns === "function") {
     handleCloverSpawns();
+  }
+  if (typeof handleFishkaSpawns === "function") {
+    handleFishkaSpawns();
   }
   handleRainbowTimers();
   handleRainbowSpawns();
@@ -11638,6 +11903,16 @@ function finalizeMove(gridX, gridY) {
       clearClover();
     }
   }
+  if (typeof fishka !== "undefined" && fishka && fishka.key === key) {
+    const chips = Math.floor(Math.random() * (FISHKA_CHIP_MAX - FISHKA_CHIP_MIN + 1)) + FISHKA_CHIP_MIN;
+    currentPlayer.dragonChipCount = (currentPlayer.dragonChipCount || 0) + chips;
+    updatePlayerResources(currentPlayerIndex);
+    updateInventory(currentPlayerIndex);
+    showLayerAwarePickupToast(currentPlayerIndex, `Фишка Дракона: +${chips} шт. в инвентарь.`);
+    if (typeof clearFishka === "function") {
+      clearFishka();
+    }
+  }
   endTurn();
 }
 
@@ -11792,6 +12067,7 @@ function doRoll() {
     currentPlayer.ballistaShotsThisTurn = 0;
     currentPlayer.tavernWheelPlaysThisTurn = 0;
     currentPlayer.tavernDragonPlaysThisTurn = 0;
+    currentPlayer.tavernFishkaPlaysThisTurn = 0;
     // Ловушка по-прежнему считает личные пропуски. Троллье оглушение уменьшится
     // ниже в общем тике, как и после любого обычного или дополнительного хода.
     if (currentPlayer.stunSource !== "troll") {
@@ -12005,6 +12281,8 @@ function resetGameState() {
     player.beerEffectStartedTurn = null;
     player.tavernWheelPlaysThisTurn = 0;
     player.tavernDragonPlaysThisTurn = 0;
+    player.tavernFishkaPlaysThisTurn = 0;
+    player.dragonChipCount = 0;
     player.stoneBonusRollsRemaining = 0;
     player.stoneSpeedTurnsRemaining = 0;
     player.stunnedTurnsRemaining = 0;
@@ -12152,6 +12430,7 @@ function resetGameState() {
   if (typeof initFlowerSpawns === "function") initFlowerSpawns();
   if (typeof initStoneSpawns === "function") initStoneSpawns();
   if (typeof initCloverSpawns === "function") initCloverSpawns();
+  if (typeof initFishkaSpawns === "function") initFishkaSpawns();
   if (typeof initRainbowSpawns === "function") initRainbowSpawns();
   if (typeof initPortalState === "function") initPortalState();
   initWorldEventSchedule();

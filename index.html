@@ -692,6 +692,10 @@
         <span class="tavern-action-icon" aria-hidden="true">🐉</span>
         <span><strong>Игра в Дракончика</strong><small>Успейте снять ставку до краша • до 2 игр за ход</small></span>
       </button>
+      <button id="tavernFishkaBtn" type="button" class="tavern-action-card">
+        <span class="tavern-action-icon" aria-hidden="true">🎰</span>
+        <span><strong>Фишка Дракона</strong><small>Колесо за фишки • до 2 игр за ход</small></span>
+      </button>
     </div>
     <p id="tavernStatus" class="tavern-status" aria-live="polite"></p>
     <button id="tavernCloseBtn" type="button" class="tavern-secondary-btn">Покинуть таверну</button>
@@ -749,6 +753,26 @@
     </div>
     <p id="tavernDragonStatus" class="tavern-status" aria-live="polite">Сделайте ставку и следите за коэффициентом.</p>
     <button id="tavernDragonBackBtn" type="button" class="tavern-secondary-btn">Назад в таверну</button>
+  </div>
+</div>
+
+<div id="tavernFishkaModal" class="tavern-modal-layer" role="dialog" aria-modal="true" aria-labelledby="tavernFishkaTitle">
+  <div class="tavern-card tavern-game-card">
+    <p class="tavern-eyebrow">Колесо из 11 секторов</p>
+    <h2 id="tavernFishkaTitle">Фишка Дракона</h2>
+    <div class="fortune-stage">
+      <div class="fortune-pointer" aria-hidden="true"></div>
+      <div id="tavernFishkaWheel" class="fishka-wheel" aria-label="Колесо с секторами призов">
+        <div class="fortune-wheel-hub">◆</div>
+      </div>
+    </div>
+    <div class="tavern-game-meta">
+      <span>Фишки: <strong id="tavernFishkaCountValue">0</strong></span>
+      <span>Игры: <strong id="tavernFishkaPlaysValue">0 / 2</strong></span>
+    </div>
+    <button id="tavernFishkaSpinBtn" type="button" class="tavern-primary-btn">Крутить (1 фишка)</button>
+    <p id="tavernFishkaStatus" class="tavern-status" aria-live="polite">Сектора: 0, −300, +250, +500, +1000 золота.</p>
+    <button id="tavernFishkaBackBtn" type="button" class="tavern-secondary-btn">Назад в таверну</button>
   </div>
 </div>
 

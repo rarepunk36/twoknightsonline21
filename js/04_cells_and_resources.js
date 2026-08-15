@@ -338,6 +338,20 @@ const CLOVER_DURATION = 5;
 let nextCloverSpawnTurn = null;
 let cloverArtifact = null;
 let cloverTurnsRemaining = 0;
+const FISHKA_FIRST_SPAWN_MIN = 15;
+const FISHKA_FIRST_SPAWN_MAX = 20;
+const FISHKA_RESPAWN_MIN = 15;
+const FISHKA_RESPAWN_MAX = 40;
+const FISHKA_DURATION = 5;
+const FISHKA_CHIP_MIN = 3;
+const FISHKA_CHIP_MAX = 5;
+let nextFishkaSpawnTurn = null;
+let fishka = null;
+
+function initFishkaSpawns() {
+  nextFishkaSpawnTurn = randomIntRange(FISHKA_FIRST_SPAWN_MIN, FISHKA_FIRST_SPAWN_MAX);
+}
+initFishkaSpawns();
 const STONE_FIRST_MIN_TURN = 15;
 const STONE_FIRST_MAX_TURN = 25;
 const STONE_COOLDOWN_MIN = 12;
@@ -1300,7 +1314,7 @@ function setCellToInactive(x, y, {skipTreasureCleanup = false} = {}) {
     clearTreasure();
     return;
   }
-  cell.classList.remove("resource", "important", "owned", "reachable", "harpoon-target", "barbarian", "special", "forest", "resource-disabled", "mercenary", "thief", "cutthroat", "messenger", "caravan", "werewolf", "mage", "portal", "wormhole", "stairs", "flower", "clover", "stone", "rainbow-stone", "void-shard", "master", "troll", "troll-cave", "tavern", "tavern-node", "treasure", "troll-cave-numbered", "troll-cave-entrance", "troll-cave-pit", "troll-cave-loot", "troll-cave-troll", "world-cell-hidden");
+  cell.classList.remove("resource", "important", "owned", "reachable", "harpoon-target", "barbarian", "special", "forest", "resource-disabled", "mercenary", "thief", "cutthroat", "messenger", "caravan", "werewolf", "mage", "portal", "wormhole", "stairs", "flower", "clover", "stone", "rainbow-stone", "void-shard", "master", "troll", "troll-cave", "tavern", "tavern-node", "treasure", "fishka", "troll-cave-numbered", "troll-cave-entrance", "troll-cave-pit", "troll-cave-loot", "troll-cave-troll", "world-cell-hidden");
   cell.classList.add("inactive");
   cell.textContent = "";
   clearCellIcon(cell);
@@ -1475,6 +1489,7 @@ function spawnResources() {
       if (resourceByPos[key]) continue;
       if (specialByPos[key]) continue;
       if (cloverArtifact && cloverArtifact.key === key) continue;
+      if (fishka && fishka.key === key) continue;
       if (barbarianCells.some(cell => cell.key === key)) continue;
       if (isSpawnBlocked(x, y)) continue;
       if (blockedCellKeys.has(key)) continue;
@@ -1595,6 +1610,7 @@ function getAvailableBarbarianKeys() {
       if (blockedCellKeys.has(key)) continue;
       if (treasure && treasure.key === key) continue;
       if (cloverArtifact && cloverArtifact.key === key) continue;
+      if (fishka && fishka.key === key) continue;
       if (barbarianCells.some(cell => cell.key === key)) continue;
       if (players.some(player => player.x === x && player.y === y)) continue;
       const cell = grid[key];
@@ -1734,6 +1750,7 @@ function getTreasureEligibleKeys() {
     if (rainbowByPos[key]) return false;
     if (voidShardByPos[key]) return false;
     if (cloverArtifact && cloverArtifact.key === key) return false;
+    if (fishka && fishka.key === key) return false;
     if (masterActive && key === MASTER_CELL.key) return false;
     if (playerPositions.has(key)) return false;
     if (treasure && treasure.key === key) return false;
@@ -1757,6 +1774,7 @@ function getFlowerEligibleKeys() {
     if (rainbowByPos[key]) return false;
     if (voidShardByPos[key]) return false;
     if (cloverArtifact && cloverArtifact.key === key) return false;
+    if (fishka && fishka.key === key) return false;
     if (playerPositions.has(key)) return false;
     if (treasure && treasure.key === key) return false;
     if (flowerArtifact && flowerArtifact.key === key) return false;
@@ -1779,6 +1797,7 @@ function getStoneEligibleKeys() {
     if (rainbowByPos[key]) return false;
     if (voidShardByPos[key]) return false;
     if (cloverArtifact && cloverArtifact.key === key) return false;
+    if (fishka && fishka.key === key) return false;
     if (playerPositions.has(key)) return false;
     if (treasure && treasure.key === key) return false;
     if (flowerArtifact && flowerArtifact.key === key) return false;
@@ -1802,6 +1821,7 @@ function getRainbowEligibleKeys() {
     if (rainbowByPos[key]) return false;
     if (voidShardByPos[key]) return false;
     if (cloverArtifact && cloverArtifact.key === key) return false;
+    if (fishka && fishka.key === key) return false;
     if (playerPositions.has(key)) return false;
     if (treasure && treasure.key === key) return false;
     if (flowerArtifact && flowerArtifact.key === key) return false;
@@ -1904,6 +1924,7 @@ function getPortalEligibleKeys() {
     if (stoneByPos[key]) return false;
     if (rainbowByPos[key]) return false;
     if (cloverArtifact && cloverArtifact.key === key) return false;
+    if (fishka && fishka.key === key) return false;
     if (masterActive && key === MASTER_CELL.key) return false;
     if (playerPositions.has(key)) return false;
     if (treasure && treasure.key === key) return false;
@@ -2036,6 +2057,7 @@ function getCloverEligibleKeys() {
     if (treasure && treasure.key === key) return false;
     if (flowerArtifact && flowerArtifact.key === key) return false;
     if (cloverArtifact && cloverArtifact.key === key) return false;
+    if (fishka && fishka.key === key) return false;
     if (barbarianCells.some(cell => cell.key === key)) return false;
     if (blockedCellKeys.has(key)) return false;
     const cell = grid[key];
@@ -2061,6 +2083,61 @@ function spawnClover() {
   cloverArtifact = { key, x, y, elem: cell };
   cloverTurnsRemaining = CLOVER_DURATION;
   return true;
+}
+
+function getFishkaEligibleKeys() {
+  const playerPositions = new Set(players.map(p => `${p.x},${p.y}`));
+  return Object.keys(grid).filter(key => {
+    if (nodeByPos[key]) return false;
+    if (resourceByPos[key]) return false;
+    if (specialByPos[key]) return false;
+    if (stoneByPos[key]) return false;
+    if (rainbowByPos[key]) return false;
+    if (voidShardByPos[key]) return false;
+    if (masterActive && key === MASTER_CELL.key) return false;
+    if (playerPositions.has(key)) return false;
+    if (treasure && treasure.key === key) return false;
+    if (flowerArtifact && flowerArtifact.key === key) return false;
+    if (cloverArtifact && cloverArtifact.key === key) return false;
+    if (fishka && fishka.key === key) return false;
+    if (barbarianCells.some(cell => cell.key === key)) return false;
+    if (blockedCellKeys.has(key)) return false;
+    const cell = grid[key];
+    if (!cell) return false;
+    if (!cell.classList.contains("inactive")) return false;
+    return true;
+  });
+}
+
+function spawnFishka() {
+  if (fishka) return false;
+  const eligibleKeys = getFishkaEligibleKeys();
+  if (eligibleKeys.length === 0) return false;
+  const key = eligibleKeys[Math.floor(Math.random() * eligibleKeys.length)];
+  const [xStr, yStr] = key.split(",");
+  const x = Number(xStr);
+  const y = Number(yStr);
+  const cell = grid[key];
+  if (!cell) return false;
+  cell.classList.remove("inactive");
+  cell.classList.add("fishka", "important");
+  cell.textContent = "";
+  setCellIcon(cell, "fishka.png", "Фишка Дракона");
+  fishka = { key, x, y, elem: cell, turnsRemaining: FISHKA_DURATION };
+  return true;
+}
+
+function clearFishka() {
+  if (!fishka) return;
+  const { x, y } = fishka;
+  const cell = fishka.elem;
+  if (cell) {
+    cell.classList.remove("fishka", "important");
+    clearCellIcon(cell);
+    setCellToInactive(x, y, { skipTreasureCleanup: true });
+  }
+  fishka = null;
+  nextFishkaSpawnTurn = turnCounter + randomIntRange(FISHKA_RESPAWN_MIN, FISHKA_RESPAWN_MAX);
 }
 
 function spawnStone() {
@@ -2113,6 +2190,7 @@ function getVoidShardSpawnEligibleKeys() {
     if (rainbowByPos[key]) return false;
     if (voidShardByPos[key]) return false;
     if (cloverArtifact && cloverArtifact.key === key) return false;
+    if (fishka && fishka.key === key) return false;
     if (playerPositions.has(key)) return false;
     if (treasure && treasure.key === key) return false;
     if (flowerArtifact && flowerArtifact.key === key) return false;
@@ -2194,6 +2272,24 @@ function handleCloverSpawns() {
   if (turnCounter < nextCloverSpawnTurn) return;
   spawnClover();
   nextCloverSpawnTurn = turnCounter + randomIntRange(CLOVER_SPAWN_MIN, CLOVER_SPAWN_MAX);
+}
+
+function handleFishkaTimers() {
+  if (!fishka) return;
+  fishka.turnsRemaining -= 1;
+  if (fishka.turnsRemaining <= 0) {
+    clearFishka();
+  }
+}
+
+function handleFishkaSpawns() {
+  if (fishka) return;
+  if (nextFishkaSpawnTurn === null) {
+    nextFishkaSpawnTurn = randomIntRange(FISHKA_FIRST_SPAWN_MIN, FISHKA_FIRST_SPAWN_MAX);
+  }
+  if (turnCounter < nextFishkaSpawnTurn) return;
+  spawnFishka();
+  nextFishkaSpawnTurn = turnCounter + randomIntRange(FISHKA_RESPAWN_MIN, FISHKA_RESPAWN_MAX);
 }
 
 function handleRainbowSpawns() {

@@ -300,6 +300,8 @@ function buildState() {
       luckTurnsRemaining: p.luckTurnsRemaining,
       invulnTurnsRemaining: p.invulnTurnsRemaining,
       cloverCount: p.cloverCount,
+      dragonChipCount: p.dragonChipCount,
+      tavernFishkaPlaysThisTurn: p.tavernFishkaPlaysThisTurn,
       trollClubCount: p.trollClubCount,
       werewolfFangCount: p.werewolfFangCount,
       flowerCount: p.flowerCount,
@@ -383,6 +385,8 @@ function buildState() {
     treasure: treasure ? { key: treasure.key, x: treasure.x, y: treasure.y } : null,
     flowerArtifact: flowerArtifact ? { key: flowerArtifact.key, x: flowerArtifact.x, y: flowerArtifact.y } : null,
     cloverArtifact: cloverArtifact ? { key: cloverArtifact.key, x: cloverArtifact.x, y: cloverArtifact.y } : null,
+    fishka: typeof fishka !== "undefined" && fishka ? { key: fishka.key, x: fishka.x, y: fishka.y, turnsRemaining: fishka.turnsRemaining } : null,
+    nextFishkaSpawnTurn: typeof nextFishkaSpawnTurn !== "undefined" ? nextFishkaSpawnTurn : null,
     cloverTurnsRemaining,
     nextCloverSpawnTurn,
     stoneByPos: Object.values(stoneByPos).map(entry => ({
@@ -539,6 +543,15 @@ function resetDynamicCells() {
   treasure = null;
   flowerArtifact = null;
   cloverArtifact = null;
+  if (typeof fishka !== "undefined" && fishka) {
+    const fishkaCell = fishka.elem;
+    if (fishkaCell) {
+      fishkaCell.classList.remove("fishka", "important");
+      clearCellIcon(fishkaCell);
+      fishkaCell.classList.add("inactive");
+    }
+    fishka = null;
+  }
   masterActive = false;
   mageSlot.active = false;
   mageSlot.key = null;
@@ -637,6 +650,18 @@ function applyClover(entry) {
   cell.textContent = "";
   setCellIcon(cell, "clover.png", "Clover");
   cloverArtifact = { key, x: entry.x, y: entry.y, elem: cell };
+}
+
+function applyFishka(entry) {
+  if (!entry) return;
+  const key = entry.key || `${entry.x},${entry.y}`;
+  const cell = grid[key];
+  if (!cell) return;
+  cell.classList.remove("inactive");
+  cell.classList.add("fishka", "important");
+  cell.textContent = "";
+  setCellIcon(cell, "fishka.png", "Фишка Дракона");
+  fishka = { key, x: entry.x, y: entry.y, elem: cell, turnsRemaining: entry.turnsRemaining ?? 5 };
 }
 
 function applyStone(entry) {
@@ -925,6 +950,10 @@ function applyState(state) {
   if (state.treasure) applyTreasure(state.treasure);
   if (state.flowerArtifact) applyFlower(state.flowerArtifact);
   if (state.cloverArtifact) applyClover(state.cloverArtifact);
+  if (state.fishka && typeof applyFishka === "function") applyFishka(state.fishka);
+  if (Object.prototype.hasOwnProperty.call(state, "nextFishkaSpawnTurn") && typeof nextFishkaSpawnTurn !== "undefined") {
+    nextFishkaSpawnTurn = state.nextFishkaSpawnTurn;
+  }
   cloverTurnsRemaining = Object.prototype.hasOwnProperty.call(state, "cloverTurnsRemaining") ? state.cloverTurnsRemaining : cloverTurnsRemaining;
   nextCloverSpawnTurn = Object.prototype.hasOwnProperty.call(state, "nextCloverSpawnTurn") ? state.nextCloverSpawnTurn : nextCloverSpawnTurn;
 
@@ -1065,6 +1094,7 @@ function applyState(state) {
     if (typeof syncTavernModalState === "function") syncTavernModalState(pendingTavernPlayerIndex);
     if (typeof syncTavernWheelModalState === "function") syncTavernWheelModalState(pendingTavernPlayerIndex);
     if (typeof syncTavernDragonModalState === "function") syncTavernDragonModalState(pendingTavernPlayerIndex);
+    if (typeof syncTavernFishkaModalState === "function") syncTavernFishkaModalState(pendingTavernPlayerIndex);
   }
   if (typeof refreshVisibleWorld === "function") {
     refreshVisibleWorld();
@@ -1334,11 +1364,31 @@ function performPrivateUiAction(action) {
         cashOutTavernDragon(playerIndex);
         return;
       }
+      if (actionType === "openFishka" && typeof openTavernFishkaModal === "function") {
+        openTavernFishkaModal();
+        if (typeof broadcastTavernSpectatorEvent === "function") {
+          broadcastTavernSpectatorEvent(playerIndex, "tavernSpectatorFishkaShow", { playerIndex });
+        }
+        return;
+      }
+      if (actionType === "backFromFishka" && typeof returnFromTavernFishka === "function") {
+        returnFromTavernFishka();
+        if (typeof broadcastTavernSpectatorEvent === "function") {
+          broadcastTavernSpectatorEvent(playerIndex, "tavernSpectatorShow", { playerIndex });
+        }
+        return;
+      }
+      if (actionType === "spinFishka" && typeof startTavernFishkaSpin === "function") {
+        startTavernFishkaSpin(playerIndex);
+        return;
+      }
       if (actionType === "closeTavern" && typeof closeTavernModal === "function") {
         const canCloseTavern = !(typeof tavernWheelVisualInProgress !== "undefined" && tavernWheelVisualInProgress) &&
           !(typeof tavernDragonVisualInProgress !== "undefined" && tavernDragonVisualInProgress) &&
+          !(typeof tavernFishkaVisualInProgress !== "undefined" && tavernFishkaVisualInProgress) &&
           !(typeof tavernWheelRound !== "undefined" && tavernWheelRound) &&
-          !(typeof tavernDragonRound !== "undefined" && tavernDragonRound);
+          !(typeof tavernDragonRound !== "undefined" && tavernDragonRound) &&
+          !(typeof tavernFishkaRound !== "undefined" && tavernFishkaRound);
         closeTavernModal();
         if (canCloseTavern && typeof broadcastTavernSpectatorEvent === "function") {
           broadcastTavernSpectatorEvent(playerIndex, "tavernSpectatorClose", { playerIndex });
@@ -2029,6 +2079,14 @@ if (socket) {
       finishTavernDragonVisual(payload);
       return;
     }
+    if (type === "startTavernFishkaSpin" && typeof beginTavernFishkaSpinVisual === "function") {
+      beginTavernFishkaSpinVisual(payload);
+      return;
+    }
+    if (type === "finishTavernFishkaSpin" && typeof finishTavernFishkaSpinVisual === "function") {
+      finishTavernFishkaSpinVisual(payload);
+      return;
+    }
     if (type === "tavernSpectatorShow" && typeof openTavernSpectatorView === "function") {
       openTavernSpectatorView(payload.playerIndex);
       return;
@@ -2055,6 +2113,18 @@ if (socket) {
     }
     if (type === "tavernSpectatorDragonFinish" && typeof finishTavernDragonSpectatorVisual === "function") {
       finishTavernDragonSpectatorVisual(payload);
+      return;
+    }
+    if (type === "tavernSpectatorFishkaShow" && typeof openTavernFishkaSpectatorShow === "function") {
+      openTavernFishkaSpectatorShow();
+      return;
+    }
+    if (type === "tavernSpectatorFishkaSpin" && typeof openTavernFishkaSpectatorVisual === "function") {
+      openTavernFishkaSpectatorVisual(payload);
+      return;
+    }
+    if (type === "tavernSpectatorFishkaFinish" && typeof finishTavernFishkaSpectatorVisual === "function") {
+      finishTavernFishkaSpectatorVisual(payload);
       return;
     }
     if (type === "tavernSpectatorClose" && typeof closeTavernSpectatorView === "function") {
@@ -2103,7 +2173,7 @@ if (socket) {
     if (!onlineMatchStarted) return;
     if (isHost || applyingRemoteState || performingRemoteAction) return;
     if (onlineGamePaused) return;
-    if (e.target?.closest?.("#castleModal, #tavernModal, #tavernWheelModal, #tavernDragonModal, #hireModal, #trollCaveModal, #battleModal, #playerBattleCardModal, #worldEventModal, #kingAuctionModal, #kingGenerosityModal, #barracksModal, #lavkaModal, #workshopModal, #cityModal, #masterModal, #mageModal, #stoneModal, #stoneResultModal, #repairModal, #messengerModal, #guardModal")) {
+    if (e.target?.closest?.("#castleModal, #tavernModal, #tavernWheelModal, #tavernDragonModal, #tavernFishkaModal, #hireModal, #trollCaveModal, #battleModal, #playerBattleCardModal, #worldEventModal, #kingAuctionModal, #kingGenerosityModal, #barracksModal, #lavkaModal, #workshopModal, #cityModal, #masterModal, #mageModal, #stoneModal, #stoneResultModal, #repairModal, #messengerModal, #guardModal")) {
       return;
     }
     const action = getActionFromEvent(e);
@@ -2127,7 +2197,7 @@ if (socket) {
     if (!onlineMatchStarted) return;
     if (!isHost || applyingRemoteState || performingRemoteAction) return;
     if (onlineGamePaused) return;
-    if (e.target?.closest?.("#castleModal, #tavernModal, #tavernWheelModal, #tavernDragonModal, #hireModal, #trollCaveModal, #battleModal, #playerBattleCardModal, #worldEventModal, #kingAuctionModal, #kingGenerosityModal, #barracksModal, #lavkaModal, #workshopModal, #cityModal, #masterModal, #mageModal, #stoneModal, #stoneResultModal, #repairModal, #messengerModal, #guardModal")) {
+    if (e.target?.closest?.("#castleModal, #tavernModal, #tavernWheelModal, #tavernDragonModal, #tavernFishkaModal, #hireModal, #trollCaveModal, #battleModal, #playerBattleCardModal, #worldEventModal, #kingAuctionModal, #kingGenerosityModal, #barracksModal, #lavkaModal, #workshopModal, #cityModal, #masterModal, #mageModal, #stoneModal, #stoneResultModal, #repairModal, #messengerModal, #guardModal")) {
       return;
     }
     const action = getActionFromEvent(e);
