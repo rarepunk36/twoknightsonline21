@@ -283,7 +283,7 @@ const PLAYER_BATTLE_CARD_RULES = {
     name: "Финт",
     mark: "✦",
     always: "Личная атака противника ослаблена на 75%.",
-    victory: "При поражении в бою противник заберёт только 25% добычи вместо 80%.",
+    victory: "При поражении в бою противник заберёт только 20% добычи вместо 80%.",
     beats: "defense"
   }
 };
@@ -9556,7 +9556,7 @@ function resolveBattle(attackerIndex, defenderIndex, options = {}) {
     : defenderAllocation.reserve;
   const loserCard = loserIndex === attackerIndex ? attackerCard : defenderCard;
   const defenseCardProtectedLoot = loserCard === "feint" && cardWinnerIndex === loserIndex;
-  const stolenRatio = defenseCardProtectedLoot ? 0.25 : 0.8;
+  const stolenRatio = defenseCardProtectedLoot ? 0.2 : 0.8;
   let stolen = null;
   if (!options.noSteal) {
     stolen = stealResources(winnerIndex, loserIndex, {
@@ -10217,7 +10217,7 @@ function buildBattleSummaryLines(result) {
         }
       }
       if (result.defenseCardProtectedLoot) {
-        lines.push("Победа «Финта»: с проигравшего забрано только 25% доступной добычи.");
+        lines.push("Победа «Финта»: с проигравшего забрано только 20% доступной добычи.");
       }
       lines.push(
         "\u00A0",
