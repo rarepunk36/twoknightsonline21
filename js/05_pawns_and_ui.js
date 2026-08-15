@@ -9718,7 +9718,7 @@ function showPlayerBattleCardReveal(payload) {
   if (playerBattleCardTitle) playerBattleCardTitle.textContent = "Карты раскрыты";
   if (playerBattleCardStatus) {
     playerBattleCardStatus.textContent = winnerIndex === null
-      ? `Оба игрока выбрали «${attackerCard.name}». Бонус победы не срабатывает.`
+      ? `Оба игрока выбрали «${attackerCard.name}». Бой отменяется.`
       : `${players[winnerIndex]?.name || `Игрок ${winnerIndex + 1}`} выигрывает карточный розыгрыш.`;
   }
   playerBattleCards.className = "player-battle-reveal-grid";
@@ -9807,6 +9807,8 @@ function beginPlayerBattleCardSelection(attackerIndex, defenderIndex, options = 
     targetY: Number(options.targetY),
     noSteal: Boolean(options.noSteal),
     defenderOwnsCastle: Boolean(options.defenderOwnsCastle),
+    attackerStartX: Number.isFinite(Number(options.attackerStartX)) ? Number(options.attackerStartX) : null,
+    attackerStartY: Number.isFinite(Number(options.attackerStartY)) ? Number(options.attackerStartY) : null,
     phase: "choosing",
     choices: players.map(() => null)
   };
@@ -9833,6 +9835,19 @@ function finishPendingPlayerBattle(battleId) {
   pendingPlayerBattle = null;
   playerBattleResolveTimer = null;
   hidePlayerBattleCardsForParticipants(battle.attackerIndex, battle.defenderIndex);
+
+  if (attackerCard === defenderCard) {
+    const attacker = players[battle.attackerIndex];
+    if (attacker && Number.isFinite(battle.attackerStartX) && Number.isFinite(battle.attackerStartY)) {
+      attacker.x = battle.attackerStartX;
+      attacker.y = battle.attackerStartY;
+      updatePawns();
+    }
+    showPickupToast("Ничья карт — бой отменён.");
+    endTurn();
+    if (typeof emitStateNow === "function") emitStateNow(true);
+    return true;
+  }
 
   const result = resolveBattle(battle.attackerIndex, battle.defenderIndex, {
     noSteal: battle.noSteal,
@@ -10192,7 +10207,7 @@ function buildBattleSummaryLines(result) {
         `Игрок ${result.attackerIndex + 1}: ${attackerCard?.name || "—"}`,
         `Игрок ${result.defenderIndex + 1}: ${defenderCard?.name || "—"}`,
         result.cardWinnerIndex === null
-          ? "Карты равны — бонус победы не сработал."
+          ? "Карты равны — бой отменён."
           : `Победила карта игрока ${result.cardWinnerIndex + 1}.`
       );
       if (result.attackerReserve > 0) {

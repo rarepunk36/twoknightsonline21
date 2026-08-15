@@ -111,6 +111,8 @@ game.addEventListener("click", e => {
         return;
       }
       clearReachable();
+      const attackerStartX = currentPlayer.x;
+      const attackerStartY = currentPlayer.y;
       currentPlayer.x = gridX;
       currentPlayer.y = gridY;
       movesRemaining = 0;
@@ -120,7 +122,9 @@ game.addEventListener("click", e => {
         targetX: gridX,
         targetY: gridY,
         noSteal: false,
-        defenderOwnsCastle: false
+        defenderOwnsCastle: false,
+        attackerStartX,
+        attackerStartY
       });
       return;
     }
@@ -282,6 +286,8 @@ game.addEventListener("click", e => {
 
     clearReachable();
     // PvP начинается только после перемещения атакующего на целевую клетку.
+    const attackerStartX = currentPlayer.x;
+    const attackerStartY = currentPlayer.y;
     currentPlayer.x = gridX;
     currentPlayer.y = gridY;
     movesRemaining = 0;
@@ -291,7 +297,9 @@ game.addEventListener("click", e => {
       targetX: gridX,
       targetY: gridY,
       noSteal: defenderOwnsCastle,
-      defenderOwnsCastle
+      defenderOwnsCastle,
+      attackerStartX,
+      attackerStartY
     });
     return;
   }
