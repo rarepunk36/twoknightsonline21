@@ -266,8 +266,8 @@ const PLAYER_BATTLE_CARD_RULES = {
     key: "attack",
     name: "Атака",
     mark: "⚔",
-    always: "Личная атака героя усилена на 125%.",
-    victory: "20% армии наносит удар 1 к 1 без ответа.",
+    always: "Первым ударом убивает 25% армии врага без ответа.",
+    victory: "После боя восстанавливается 50% от потерянных войск.",
     beats: "feint"
   },
   defense: {
@@ -9459,7 +9459,6 @@ function tryKnockRandomPlayerBattleItem(targetPlayerIndex) {
 
 function getPlayerBattlePersonalStrike(player, ownCard, enemyCard) {
   let strike = Math.max(0, player?.attack || 0);
-  if (ownCard === "attack") strike *= 2.25;
   if (enemyCard === "feint") strike *= 0.25;
   return Math.max(0, Math.floor(strike));
 }
@@ -9496,13 +9495,23 @@ function resolveBattle(attackerIndex, defenderIndex, options = {}) {
     defenderCard
   );
 
-  let attackerCardBonusDamage = 0;
-  let defenderCardBonusDamage = 0;
+  // Гарантированный эффект «Атаки»: первым ударом убивает 25% армии врага без ответа.
+  let attackerFirstStrikeKills = 0;
+  let defenderFirstStrikeKills = 0;
+  if (attackerCard === "attack" && defenderFighting > 0) {
+    attackerFirstStrikeKills = Math.min(defenderFighting, Math.floor(defenderFighting * 0.25));
+    defenderFighting = Math.max(0, defenderFighting - attackerFirstStrikeKills);
+  }
+  if (defenderCard === "attack" && attackerFighting > 0) {
+    defenderFirstStrikeKills = Math.min(attackerFighting, Math.floor(attackerFighting * 0.25));
+    attackerFighting = Math.max(0, attackerFighting - defenderFirstStrikeKills);
+  }
+
   let knockedItem = null;
+  let attackCardVictoryPlayerIndex = null;
   if (cardWinnerIndex === attackerIndex) {
     if (attackerCard === "attack") {
-      attackerCardBonusDamage = Math.min(defenderFighting, Math.floor(initialAttArmy * 0.2));
-      defenderFighting = Math.max(0, defenderFighting - attackerCardBonusDamage);
+      attackCardVictoryPlayerIndex = attackerIndex;
     } else if (attackerCard === "defense") {
       knockedItem = {
         sourcePlayerIndex: attackerIndex,
@@ -9512,8 +9521,7 @@ function resolveBattle(attackerIndex, defenderIndex, options = {}) {
     }
   } else if (cardWinnerIndex === defenderIndex) {
     if (defenderCard === "attack") {
-      defenderCardBonusDamage = Math.min(attackerFighting, Math.floor(initialDefArmy * 0.2));
-      attackerFighting = Math.max(0, attackerFighting - defenderCardBonusDamage);
+      attackCardVictoryPlayerIndex = defenderIndex;
     } else if (defenderCard === "defense") {
       knockedItem = {
         sourcePlayerIndex: defenderIndex,
@@ -9537,8 +9545,8 @@ function resolveBattle(attackerIndex, defenderIndex, options = {}) {
   attackerFighting = Math.max(0, attackerFighting - armyExchangeLoss);
   defenderFighting = Math.max(0, defenderFighting - armyExchangeLoss);
 
-  const attackerRemaining = attackerFighting + attackerAllocation.reserve;
-  const defenderRemaining = defenderFighting + defenderAllocation.reserve;
+  let attackerRemaining = attackerFighting + attackerAllocation.reserve;
+  let defenderRemaining = defenderFighting + defenderAllocation.reserve;
   attacker.pocket.army = attackerRemaining;
   defender.pocket.army = defenderRemaining;
 
@@ -9549,6 +9557,21 @@ function resolveBattle(attackerIndex, defenderIndex, options = {}) {
   if (loser) {
     influenceLoss = Math.min(HERO_BATTLE_INFLUENCE_LOSS, Math.max(0, loser.resources.influence || 0));
     loser.resources.influence = Math.max(0, (loser.resources.influence || 0) - HERO_BATTLE_INFLUENCE_LOSS);
+  }
+
+  // Бонус «Атаки» за победу карты: после боя восстанавливается 50% от потерянных войск.
+  let attackerTroopsRestored = 0;
+  let defenderTroopsRestored = 0;
+  if (attackCardVictoryPlayerIndex === attackerIndex) {
+    const attackerLost = Math.max(0, initialAttArmy - attackerRemaining);
+    attackerTroopsRestored = Math.floor(attackerLost * 0.5);
+    attackerRemaining += attackerTroopsRestored;
+    attacker.pocket.army = attackerRemaining;
+  } else if (attackCardVictoryPlayerIndex === defenderIndex) {
+    const defenderLost = Math.max(0, initialDefArmy - defenderRemaining);
+    defenderTroopsRestored = Math.floor(defenderLost * 0.5);
+    defenderRemaining += defenderTroopsRestored;
+    defender.pocket.army = defenderRemaining;
   }
 
   const loserProtectedArmy = loserIndex === attackerIndex
@@ -9584,8 +9607,10 @@ function resolveBattle(attackerIndex, defenderIndex, options = {}) {
     cardWinnerIndex,
     attackerReserve: attackerAllocation.reserve,
     defenderReserve: defenderAllocation.reserve,
-    attackerCardBonusDamage,
-    defenderCardBonusDamage,
+    attackerFirstStrikeKills,
+    defenderFirstStrikeKills,
+    attackerTroopsRestored,
+    defenderTroopsRestored,
     attackerPersonalDamage,
     defenderPersonalDamage,
     armyExchangeLoss,
@@ -10216,11 +10241,17 @@ function buildBattleSummaryLines(result) {
       if (result.defenderReserve > 0) {
         lines.push(`Игрок ${result.defenderIndex + 1}: ${result.defenderReserve} войск сохранено в резерве.`);
       }
-      if (result.attackerCardBonusDamage > 0) {
-        lines.push(`Бонус карты игрока ${result.attackerIndex + 1}: уничтожено ${result.attackerCardBonusDamage} войск без ответа.`);
+      if (result.attackerFirstStrikeKills > 0) {
+        lines.push(`Атака игрока ${result.attackerIndex + 1}: первым ударом убито ${result.attackerFirstStrikeKills} войск без ответа.`);
       }
-      if (result.defenderCardBonusDamage > 0) {
-        lines.push(`Бонус карты игрока ${result.defenderIndex + 1}: уничтожено ${result.defenderCardBonusDamage} войск без ответа.`);
+      if (result.defenderFirstStrikeKills > 0) {
+        lines.push(`Атака игрока ${result.defenderIndex + 1}: первым ударом убито ${result.defenderFirstStrikeKills} войск без ответа.`);
+      }
+      if (result.attackerTroopsRestored > 0) {
+        lines.push(`Бонус карты игрока ${result.attackerIndex + 1}: восстановлено ${result.attackerTroopsRestored} войск после боя.`);
+      }
+      if (result.defenderTroopsRestored > 0) {
+        lines.push(`Бонус карты игрока ${result.defenderIndex + 1}: восстановлено ${result.defenderTroopsRestored} войск после боя.`);
       }
       if (result.knockedItem) {
         if (result.knockedItem.success) {
