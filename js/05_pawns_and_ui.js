@@ -282,7 +282,7 @@ const PLAYER_BATTLE_CARD_RULES = {
     key: "feint",
     name: "Финт",
     mark: "✦",
-    always: "Личная атака противника ослаблена на 75%.",
+    always: "50% шанс кражи из инвентаря противника.",
     victory: "При поражении в бою противник заберёт только 20% добычи вместо 80%.",
     beats: "defense"
   }
@@ -9445,11 +9445,12 @@ function getPlayerBattleDroppableItems(player) {
   return items;
 }
 
-function tryKnockRandomPlayerBattleItem(targetPlayerIndex) {
+function tryKnockRandomPlayerBattleItem(targetPlayerIndex, chance = 1) {
   const target = players[targetPlayerIndex];
   if (!target) return { success: false, reason: "no-target" };
   const items = getPlayerBattleDroppableItems(target);
   if (!items.length) return { success: false, reason: "empty" };
+  if (Math.random() >= chance) return { success: false, reason: "chance" };
   const item = items[Math.floor(Math.random() * items.length)];
   item.remove();
   updatePlayerResources(targetPlayerIndex);
@@ -9458,8 +9459,7 @@ function tryKnockRandomPlayerBattleItem(targetPlayerIndex) {
 }
 
 function getPlayerBattlePersonalStrike(player, ownCard, enemyCard) {
-  let strike = Math.max(0, player?.attack || 0);
-  if (enemyCard === "feint") strike *= 0.25;
+  const strike = Math.max(0, player?.attack || 0);
   return Math.max(0, Math.floor(strike));
 }
 
@@ -9505,6 +9505,22 @@ function resolveBattle(attackerIndex, defenderIndex, options = {}) {
   if (defenderCard === "attack" && attackerFighting > 0) {
     defenderFirstStrikeKills = Math.min(attackerFighting, Math.floor(attackerFighting * 0.25));
     attackerFighting = Math.max(0, attackerFighting - defenderFirstStrikeKills);
+  }
+
+  // Гарантированный эффект «Финта»: 50% шанс кражи из инвентаря противника.
+  let feintStealResult = null;
+  if (attackerCard === "feint") {
+    feintStealResult = {
+      sourcePlayerIndex: attackerIndex,
+      targetPlayerIndex: defenderIndex,
+      ...tryKnockRandomPlayerBattleItem(defenderIndex, 0.5)
+    };
+  } else if (defenderCard === "feint") {
+    feintStealResult = {
+      sourcePlayerIndex: defenderIndex,
+      targetPlayerIndex: attackerIndex,
+      ...tryKnockRandomPlayerBattleItem(attackerIndex, 0.5)
+    };
   }
 
   let knockedItem = null;
@@ -9615,6 +9631,7 @@ function resolveBattle(attackerIndex, defenderIndex, options = {}) {
     defenderPersonalDamage,
     armyExchangeLoss,
     knockedItem,
+    feintStealResult,
     stolenRatio,
     defenseCardProtectedLoot
   };
@@ -10252,6 +10269,15 @@ function buildBattleSummaryLines(result) {
       }
       if (result.defenderTroopsRestored > 0) {
         lines.push(`Бонус карты игрока ${result.defenderIndex + 1}: восстановлено ${result.defenderTroopsRestored} войск после боя.`);
+      }
+      if (result.feintStealResult) {
+        if (result.feintStealResult.success) {
+          lines.push(`Финт игрока ${result.feintStealResult.sourcePlayerIndex + 1}: украден предмет «${result.feintStealResult.label}» из инвентаря противника.`);
+        } else if (result.feintStealResult.reason === "empty") {
+          lines.push("Финт сработал, но в инвентаре противника нечего красть.");
+        } else {
+          lines.push("Финт: кража не удалась.");
+        }
       }
       if (result.knockedItem) {
         if (result.knockedItem.success) {
