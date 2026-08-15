@@ -749,7 +749,7 @@ const WORLD_LAYER_TROLL_CAVE = "troll-cave";
 const TROLL_CAVE_VIEW_ZOOM = 1.28;
 let lastVisibleWorldLayoutLayer = null;
 const TIME_OF_DAY_CYCLE = [
-  { key: "day",     label: "День",   duration: 40, bg: 'url("assets/map-plateau.jpg")' },
+  { key: "day",     label: "День",   duration: 40, bg: 'url("assets/map-plateau.png")' },
   { key: "evening", label: "Вечер",  duration: 15, bg: 'url("assets/backgrounds/evening_bg.png")' },
   { key: "night",   label: "Ночь",   duration: 25, bg: 'url("assets/backgrounds/night_bg.png")' },
   { key: "morning", label: "Утро",   duration: 15, bg: 'url("assets/backgrounds/morning_bg.png")' },
