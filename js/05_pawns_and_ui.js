@@ -9175,6 +9175,37 @@ function openPlayerBattleCardModal(playerIndex, battle = pendingPlayerBattle) {
   playerBattleCards.innerHTML = Object.keys(PLAYER_BATTLE_CARD_RULES)
     .map(cardKey => getPlayerBattleCardMarkup(cardKey, { button: true }))
     .join("");
+  playerBattleCards.querySelectorAll("[data-player-battle-card]").forEach(button => {
+    const hoveredCard = PLAYER_BATTLE_CARD_RULES[button.dataset.playerBattleCard];
+    const beatenKey = hoveredCard?.beats;
+    const clearHover = () => {
+      button.classList.remove("is-hovering");
+      if (beatenKey) {
+        playerBattleCards
+          .querySelector(`[data-player-battle-card="${beatenKey}"]`)
+          ?.classList.remove("is-beaten");
+      }
+    };
+    button.addEventListener("mouseenter", () => {
+      clearHover();
+      button.classList.add("is-hovering");
+      if (beatenKey) {
+        playerBattleCards
+          .querySelector(`[data-player-battle-card="${beatenKey}"]`)
+          ?.classList.add("is-beaten");
+      }
+    });
+    button.addEventListener("mouseleave", clearHover);
+    button.addEventListener("focus", () => {
+      button.classList.add("is-hovering");
+      if (beatenKey) {
+        playerBattleCards
+          .querySelector(`[data-player-battle-card="${beatenKey}"]`)
+          ?.classList.add("is-beaten");
+      }
+    });
+    button.addEventListener("blur", clearHover);
+  });
   playerBattleCardModal.style.display = "flex";
   return true;
 }
