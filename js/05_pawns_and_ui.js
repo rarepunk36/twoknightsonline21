@@ -8829,7 +8829,7 @@ function resolveBarbarianBattle(playerIndex, barbarian) {
   };
 }
 
-function resolveDragonBattle(playerIndex, dragonArmy = 75) {
+function resolveDragonBattle(playerIndex, dragonArmy = 90) {
   const player = players[playerIndex];
   if (!player) return null;
   const initialAttArmy = Math.max(0, player.pocket.army);
@@ -11225,7 +11225,7 @@ function finalizeMove(gridX, gridY) {
       endTurn();
       return;
     }
-    const battleResult = resolveDragonBattle(currentPlayerIndex, 75);
+    const battleResult = resolveDragonBattle(currentPlayerIndex, 90);
     showBattleModal(battleResult);
     if (battleResult && battleResult.winnerIndex === currentPlayerIndex) {
       showGameOver(currentPlayerIndex);
