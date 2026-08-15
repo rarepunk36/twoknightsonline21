@@ -275,7 +275,7 @@ const PLAYER_BATTLE_CARD_RULES = {
     name: "Оборона",
     mark: "◆",
     always: "75% армии уходит в резерв и точно выживает.",
-    victory: "При поражении в бою противник заберёт только 25% добычи вместо 80%.",
+    victory: "100% шанс выбить случайный предмет противника.",
     beats: "attack"
   },
   feint: {
@@ -283,7 +283,7 @@ const PLAYER_BATTLE_CARD_RULES = {
     name: "Финт",
     mark: "✦",
     always: "Личная атака противника ослаблена на 75%.",
-    victory: "50% шанс выбить случайный предмет противника.",
+    victory: "При поражении в бою противник заберёт только 25% добычи вместо 80%.",
     beats: "defense"
   }
 };
@@ -9367,10 +9367,10 @@ function getPlayerBattleDroppableItems(player) {
     const count = Math.max(0, player[property] || 0);
     if (count <= 0) return;
     items.push({
-      label,
+      label: count > 1 ? `${label} ×${count}` : label,
       remove() {
         const before = Math.max(0, player[property] || 0);
-        player[property] = Math.max(0, before - 1);
+        player[property] = 0;
         if (onRemove) onRemove(before);
       }
     });
@@ -9450,7 +9450,6 @@ function tryKnockRandomPlayerBattleItem(targetPlayerIndex) {
   if (!target) return { success: false, reason: "no-target" };
   const items = getPlayerBattleDroppableItems(target);
   if (!items.length) return { success: false, reason: "empty" };
-  if (Math.random() >= 0.5) return { success: false, reason: "chance" };
   const item = items[Math.floor(Math.random() * items.length)];
   item.remove();
   updatePlayerResources(targetPlayerIndex);
@@ -9504,7 +9503,7 @@ function resolveBattle(attackerIndex, defenderIndex, options = {}) {
     if (attackerCard === "attack") {
       attackerCardBonusDamage = Math.min(defenderFighting, Math.floor(initialAttArmy * 0.2));
       defenderFighting = Math.max(0, defenderFighting - attackerCardBonusDamage);
-    } else if (attackerCard === "feint") {
+    } else if (attackerCard === "defense") {
       knockedItem = {
         sourcePlayerIndex: attackerIndex,
         targetPlayerIndex: defenderIndex,
@@ -9515,7 +9514,7 @@ function resolveBattle(attackerIndex, defenderIndex, options = {}) {
     if (defenderCard === "attack") {
       defenderCardBonusDamage = Math.min(attackerFighting, Math.floor(initialDefArmy * 0.2));
       attackerFighting = Math.max(0, attackerFighting - defenderCardBonusDamage);
-    } else if (defenderCard === "feint") {
+    } else if (defenderCard === "defense") {
       knockedItem = {
         sourcePlayerIndex: defenderIndex,
         targetPlayerIndex: attackerIndex,
@@ -9556,7 +9555,7 @@ function resolveBattle(attackerIndex, defenderIndex, options = {}) {
     ? attackerAllocation.reserve
     : defenderAllocation.reserve;
   const loserCard = loserIndex === attackerIndex ? attackerCard : defenderCard;
-  const defenseCardProtectedLoot = loserCard === "defense" && cardWinnerIndex === loserIndex;
+  const defenseCardProtectedLoot = loserCard === "feint" && cardWinnerIndex === loserIndex;
   const stolenRatio = defenseCardProtectedLoot ? 0.25 : 0.8;
   let stolen = null;
   if (!options.noSteal) {
@@ -10210,15 +10209,15 @@ function buildBattleSummaryLines(result) {
       }
       if (result.knockedItem) {
         if (result.knockedItem.success) {
-          lines.push(`Финт игрока ${result.knockedItem.sourcePlayerIndex + 1}: выбит предмет «${result.knockedItem.label}».`);
+          lines.push(`Оборона игрока ${result.knockedItem.sourcePlayerIndex + 1}: выбит предмет «${result.knockedItem.label}».`);
         } else if (result.knockedItem.reason === "empty") {
-          lines.push("Финт сработал, но в инвентаре противника нечего выбивать.");
+          lines.push("Оборона сработала, но в инвентаре противника нечего выбивать.");
         } else {
-          lines.push("Финт: попытка выбить предмет не удалась.");
+          lines.push("Оборона: попытка выбить предмет не удалась.");
         }
       }
       if (result.defenseCardProtectedLoot) {
-        lines.push("Победа «Обороны»: с проигравшего забрано только 25% доступной добычи.");
+        lines.push("Победа «Финта»: с проигравшего забрано только 25% доступной добычи.");
       }
       lines.push(
         "\u00A0",
