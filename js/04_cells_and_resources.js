@@ -801,6 +801,7 @@ function bindCreatureHpTooltip(cell, title, getHp) {
     const stillHasCreature =
       cell.classList.contains("werewolf") ||
       cell.classList.contains("troll") ||
+      cell.classList.contains("barbarian") ||
       cell.querySelector(".troll-token");
     if (!stillHasCreature) {
       hideCreatureHpTooltip();
@@ -1800,6 +1801,13 @@ function updateBarbarianCellVisual(entry) {
       : ""
   }`;
   updateBarbarianTimerVisual(entry);
+  if (typeof bindCreatureHpTooltip === "function") {
+    bindCreatureHpTooltip(cell, "Варвары", () => {
+      const current = barbarianCells.find(bc => bc.key === key);
+      const army = Math.max(0, Math.floor(Number(current?.army) || 0));
+      return { hp: army, maxHp: army };
+    });
+  }
 }
 
 function syncBarbarianStrengths() {
@@ -1866,6 +1874,10 @@ function removeBarbarianCell(key) {
   if (index === -1) return null;
   const removed = barbarianCells.splice(index, 1)[0];
   setCellToInactive(removed.x, removed.y);
+  const removedCell = grid[removed.key];
+  if (removedCell && typeof unbindCreatureHpTooltip === "function") {
+    unbindCreatureHpTooltip(removedCell);
+  }
   return removed;
 }
 
