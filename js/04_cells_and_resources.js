@@ -770,8 +770,10 @@ function clearTrollTokenAt(key) {
   if (token) token.remove();
   cell.classList.remove("troll");
   unbindCreatureHpTooltip(cell);
-  hideCreatureHpTooltip();
+  hideCreatureHpTooltip(cell);
 }
+
+let creatureHpTooltipAnchorCell = null;
 
 function showCreatureHpTooltip(title, hp, maxHp, anchorCell) {
   const tooltip = typeof creatureHpTooltip !== "undefined" ? creatureHpTooltip : document.getElementById("creatureHpTooltip");
@@ -787,9 +789,12 @@ function showCreatureHpTooltip(title, hp, maxHp, anchorCell) {
   tooltip.style.left = `${rect.left + rect.width / 2}px`;
   tooltip.style.top = `${rect.top - 10}px`;
   tooltip.style.display = "block";
+  creatureHpTooltipAnchorCell = anchorCell;
 }
 
-function hideCreatureHpTooltip() {
+function hideCreatureHpTooltip(anchorCell = null) {
+  if (anchorCell && creatureHpTooltipAnchorCell !== anchorCell) return;
+  creatureHpTooltipAnchorCell = null;
   const tooltip = typeof creatureHpTooltip !== "undefined" ? creatureHpTooltip : document.getElementById("creatureHpTooltip");
   if (tooltip) tooltip.style.display = "none";
 }

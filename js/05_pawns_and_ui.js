@@ -2319,7 +2319,7 @@ function clearWerewolfCell(x, y) {
     unbindCreatureHpTooltip(cell);
   }
   if (typeof hideCreatureHpTooltip === "function") {
-    hideCreatureHpTooltip();
+    hideCreatureHpTooltip(cell);
   }
   const node = nodeByPos[key];
   if (node) {
