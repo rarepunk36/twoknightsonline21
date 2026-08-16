@@ -1285,6 +1285,19 @@ const BARBARIAN_RESPAWN_MAX = 14;
 const MAX_BARBARIAN_CELLS = 3;
 const LATE_GAME_MAX_BARBARIAN_CELLS = 4;
 const BARBARIAN_FURY_MULTIPLIER = 1.3;
+const BARBARIAN_ARMY_EARLY_MIN = 7;
+const BARBARIAN_ARMY_EARLY_MAX = 10;
+const BARBARIAN_ARMY_MID_MIN = 20;
+const BARBARIAN_ARMY_MID_MAX = 30;
+const BARBARIAN_ARMY_LATE_MIN = 30;
+const BARBARIAN_ARMY_LATE_MAX = 40;
+const BARBARIAN_GROWTH_INTERVAL = 20;
+const BARBARIAN_GROWTH_AMOUNT = 5;
+const BARBARIAN_CAP_EARLY = 30;
+const BARBARIAN_CAP_MID = 50;
+const BARBARIAN_ATTACK_TIMER_START = 25;
+const BARBARIAN_CASTLE_STEAL_RATIO = 0.15;
+const BARBARIAN_CASTLE_STEAL_RATIO_LATE = 0.2;
 let turnCounter = 0;
 let barbarianPhaseStarted = false;
 let barbarianCells = [];
@@ -1630,9 +1643,30 @@ function getBarbarianCellLimit() {
 }
 
 function getBarbarianBaseArmyForTurn() {
-  const baseArmy = Math.floor(Math.random() * 11) + 10;
-  const strengthMultiplier = turnCounter >= 150 ? 1.75 : 1;
-  return Math.max(1, Math.ceil(baseArmy * strengthMultiplier));
+  let min = BARBARIAN_ARMY_EARLY_MIN;
+  let max = BARBARIAN_ARMY_EARLY_MAX;
+  if (turnCounter >= 225) {
+    min = BARBARIAN_ARMY_LATE_MIN;
+    max = BARBARIAN_ARMY_LATE_MAX;
+  } else if (turnCounter >= 150) {
+    min = BARBARIAN_ARMY_MID_MIN;
+    max = BARBARIAN_ARMY_MID_MAX;
+  }
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function getBarbarianArmyCapForTurn() {
+  if (turnCounter >= 225) return Infinity;
+  if (turnCounter >= 150) return BARBARIAN_CAP_MID;
+  return BARBARIAN_CAP_EARLY;
+}
+
+function getRandomBarbarianTargetIndex() {
+  const indexes = players
+    .map((player, index) => (player ? index : -1))
+    .filter(index => index >= 0);
+  if (!indexes.length) return null;
+  return indexes[Math.floor(Math.random() * indexes.length)];
 }
 
 function getBarbarianEffectiveArmy(baseArmy) {
@@ -1641,6 +1675,27 @@ function getBarbarianEffectiveArmy(baseArmy) {
     return Math.max(1, Math.ceil(normalizedBaseArmy * BARBARIAN_FURY_MULTIPLIER));
   }
   return normalizedBaseArmy;
+}
+
+function updateBarbarianTimerVisual(entry) {
+  if (!entry) return;
+  const key = entry.key || `${entry.x},${entry.y}`;
+  const cell = grid[key];
+  if (!cell) return;
+  let badge = cell.querySelector(".barbarian-timer-badge");
+  if (!badge) {
+    badge = document.createElement("div");
+    badge.className = "barbarian-timer-badge";
+    cell.appendChild(badge);
+  }
+  const target = players[entry.targetPlayerIndex];
+  const color = target?.color || "#9a9a9a";
+  badge.style.background = color;
+  badge.style.borderColor = color;
+  badge.textContent = String(Math.max(0, Number.isInteger(entry.attackTimer) ? entry.attackTimer : 0));
+  badge.title = target
+    ? `Варвары нападут на замок ${target.name || `Игрок ${entry.targetPlayerIndex + 1}`} через ${Math.max(0, entry.attackTimer || 0)} ходов`
+    : "Варвары выбирают цель";
 }
 
 function updateBarbarianCellVisual(entry) {
@@ -1659,6 +1714,7 @@ function updateBarbarianCellVisual(entry) {
     else if (getTimeOfDay().key === "morning") displayArmy = Math.ceil(entry.army * 0.7);
   }
   cell.title = `ВАРВАРЫ: ${displayArmy} войск`;
+  updateBarbarianTimerVisual(entry);
 }
 
 function syncBarbarianStrengths() {
@@ -1666,7 +1722,8 @@ function syncBarbarianStrengths() {
     if (!entry) return;
     const baseArmy = Math.max(1, Math.floor(Number(entry.baseArmy ?? entry.army) || 0));
     entry.baseArmy = baseArmy;
-    entry.army = getBarbarianEffectiveArmy(baseArmy);
+    const growthBonus = Math.max(0, Math.floor(Number(entry.growthBonus) || 0));
+    entry.army = getBarbarianEffectiveArmy(baseArmy + growthBonus);
     updateBarbarianCellVisual(entry);
   });
 }
@@ -1690,7 +1747,17 @@ function spawnBarbarianCell() {
   cell.title = "ВАРВАРЫ";
   setCellIcon(cell, "barbarian_village.png", "Варвары");
   cell.setAttribute("data-barbarian", "true");
-  const entry = { key, x, y, baseArmy, army };
+  const entry = {
+    key,
+    x,
+    y,
+    baseArmy,
+    army,
+    growthBonus: 0,
+    spawnTurn: turnCounter,
+    attackTimer: BARBARIAN_ATTACK_TIMER_START,
+    targetPlayerIndex: getRandomBarbarianTargetIndex()
+  };
   barbarianCells.push(entry);
   updateBarbarianCellVisual(entry);
   cell.title = `ВАРВАРЫ: ${army} войск`;
@@ -1736,6 +1803,58 @@ function handleBarbarianRespawns() {
       }
     }
   }
+}
+
+function resolveBarbarianCastleAttack(entry) {
+  const target = players[entry.targetPlayerIndex];
+  if (!target) return;
+  const ratio = turnCounter >= BARBARIAN_LATE_GAME_TURN
+    ? BARBARIAN_CASTLE_STEAL_RATIO_LATE
+    : BARBARIAN_CASTLE_STEAL_RATIO;
+  const goldStolen = Math.floor(Math.max(0, target.pocket.gold || 0) * ratio);
+  const resourcesStolen = Math.floor(Math.max(0, target.pocket.resources || 0) * ratio);
+  target.pocket.gold = Math.max(0, (target.pocket.gold || 0) - goldStolen);
+  target.pocket.resources = Math.max(0, (target.pocket.resources || 0) - resourcesStolen);
+  if (typeof updatePlayerResources === "function") {
+    updatePlayerResources(entry.targetPlayerIndex);
+  }
+  const targetName = target.name || `Игрок ${entry.targetPlayerIndex + 1}`;
+  if (goldStolen > 0 || resourcesStolen > 0) {
+    if (typeof showPickupToast === "function") {
+      showPickupToast(
+        `Варвары напали на замок ${targetName}: украдено ${goldStolen} золота и ${resourcesStolen} ресурсов.`
+      );
+    }
+  }
+  if (typeof emitStateNow === "function") emitStateNow(true);
+}
+
+function tickBarbarianCells() {
+  if (!barbarianPhaseStarted) return;
+  barbarianCells.forEach(entry => {
+    if (!entry) return;
+    const spawnTurn = Number.isInteger(entry.spawnTurn) ? entry.spawnTurn : turnCounter;
+    const turnsAlive = turnCounter - spawnTurn;
+    if (turnsAlive > 0 && turnsAlive % BARBARIAN_GROWTH_INTERVAL === 0) {
+      const cap = getBarbarianArmyCapForTurn();
+      const currentTotal = (entry.baseArmy || 0) + (entry.growthBonus || 0);
+      if (currentTotal < cap) {
+        entry.growthBonus = (entry.growthBonus || 0) + BARBARIAN_GROWTH_AMOUNT;
+        entry.army = getBarbarianEffectiveArmy((entry.baseArmy || 0) + entry.growthBonus);
+        updateBarbarianCellVisual(entry);
+      }
+    }
+    if (!Number.isInteger(entry.attackTimer)) {
+      entry.attackTimer = BARBARIAN_ATTACK_TIMER_START;
+    }
+    entry.attackTimer -= 1;
+    if (entry.attackTimer <= 0) {
+      resolveBarbarianCastleAttack(entry);
+      entry.attackTimer = BARBARIAN_ATTACK_TIMER_START;
+      entry.targetPlayerIndex = getRandomBarbarianTargetIndex();
+    }
+    updateBarbarianTimerVisual(entry);
+  });
 }
 
 function scaleBarbarianReward(army, min, max) {

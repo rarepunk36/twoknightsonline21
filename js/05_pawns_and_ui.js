@@ -3704,6 +3704,9 @@ function renderUpperWorldView() {
     cell.title = `ВАРВАРЫ: ${displayArmy} войск`;
     cell.setAttribute("data-barbarian", "true");
     setCellIcon(cell, "barbarian_village.png", "Варвары");
+    if (typeof updateBarbarianTimerVisual === "function") {
+      updateBarbarianTimerVisual(entry);
+    }
   });
   mercenaries.forEach(entry => setCellToMercenary(entry.x, entry.y));
   thieves.forEach(entry => setCellToThief(entry.x, entry.y));
@@ -11271,6 +11274,9 @@ function completeTurnAdvance() {
     }
   }
   handleBarbarianRespawns();
+  if (typeof tickBarbarianCells === "function") {
+    tickBarbarianCells();
+  }
   advanceMercenaries();
   advanceThieves();
   advanceCutthroats();

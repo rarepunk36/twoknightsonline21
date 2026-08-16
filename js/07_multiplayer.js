@@ -734,6 +734,13 @@ function applyBarbarianCell(entry) {
   cell.title = `ВАРВАРЫ: ${army} войск`;
   cell.setAttribute("data-barbarian", "true");
   setCellIcon(cell, "barbarian_village.png", "Варвары");
+  if (!Number.isInteger(entry.attackTimer)) entry.attackTimer = 25;
+  if (!Number.isInteger(entry.targetPlayerIndex)) entry.targetPlayerIndex = 0;
+  if (!Number.isInteger(entry.spawnTurn)) entry.spawnTurn = typeof turnCounter !== "undefined" ? turnCounter : 0;
+  if (!Number.isFinite(Number(entry.growthBonus))) entry.growthBonus = 0;
+  if (typeof updateBarbarianTimerVisual === "function") {
+    updateBarbarianTimerVisual(entry);
+  }
 }
 
 function applyMercenary(entry) {

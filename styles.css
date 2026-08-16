@@ -545,6 +545,27 @@
       box-shadow: none;
       font-weight: bold;
     }
+    .cell .barbarian-timer-badge {
+      position: absolute;
+      top: 4%;
+      right: 4%;
+      width: 42%;
+      height: 42%;
+      min-width: 22px;
+      min-height: 22px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      border: 3px solid rgba(0, 0, 0, 0.75);
+      color: #ffffff;
+      font-weight: 900;
+      font-size: clamp(11px, 1.7vw, 16px);
+      line-height: 1;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+      z-index: 6;
+      pointer-events: none;
+    }
     .cell.has-icon {
       background: rgba(255, 255, 255, 0);
     }
