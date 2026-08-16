@@ -2302,8 +2302,12 @@ function setCellToWerewolf(x, y) {
   cell.classList.add("important", "werewolf");
   cell.textContent = "";
   setCellIcon(cell, "werewolf.png", "Оборотень");
-  const health = Math.max(0, Math.floor(Number(werewolfState?.health) || 0));
-  cell.title = `Оборотень: ${health}/${WEREWOLF_MAX_HEALTH} ХП`;
+  if (typeof bindCreatureHpTooltip === "function") {
+    bindCreatureHpTooltip(cell, "Оборотень", () => ({
+      hp: Math.max(0, Math.floor(Number(werewolfState?.health) || 0)),
+      maxHp: WEREWOLF_MAX_HEALTH
+    }));
+  }
   return true;
 }
 
@@ -3828,7 +3832,12 @@ function renderTrollCaveView() {
       token.src = "assets/icons/troll.png";
       token.alt = "Тролль";
       trollCell.appendChild(token);
-      trollCell.title = `Тролль · клетка ${getTrollCaveCellNumber(trollState.interiorX, trollState.interiorY)} · ${getTimeOfDay().key === "evening" ? 20 : 25} войск`;
+      if (typeof bindCreatureHpTooltip === "function") {
+        bindCreatureHpTooltip(trollCell, "Тролль", () => {
+          const trollArmy = getTimeOfDay().key === "evening" ? 20 : 25;
+          return { hp: trollArmy, maxHp: trollArmy };
+        });
+      }
     }
   }
 }

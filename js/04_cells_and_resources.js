@@ -750,9 +750,41 @@ function clearTrollTokenAt(key) {
   const token = cell.querySelector(".troll-token");
   if (token) token.remove();
   cell.classList.remove("troll");
-  if (cell.title && cell.title.indexOf("Тролли:") === 0) {
-    cell.removeAttribute("title");
-  }
+  hideCreatureHpTooltip();
+}
+
+function showCreatureHpTooltip(title, hp, maxHp, anchorCell) {
+  const tooltip = typeof creatureHpTooltip !== "undefined" ? creatureHpTooltip : document.getElementById("creatureHpTooltip");
+  if (!tooltip || !anchorCell) return;
+  const titleElem = typeof creatureHpTitle !== "undefined" ? creatureHpTitle : document.getElementById("creatureHpTitle");
+  const fillElem = typeof creatureHpFill !== "undefined" ? creatureHpFill : document.getElementById("creatureHpFill");
+  const valueElem = typeof creatureHpValue !== "undefined" ? creatureHpValue : document.getElementById("creatureHpValue");
+  const rect = anchorCell.getBoundingClientRect();
+  const safeHp = Math.max(0, Math.floor(Number(hp) || 0));
+  const safeMax = Math.max(1, Math.floor(Number(maxHp) || 1));
+  const pct = Math.min(100, Math.round((safeHp / safeMax) * 100));
+  if (titleElem) titleElem.textContent = title;
+  if (fillElem) fillElem.style.width = `${pct}%`;
+  if (valueElem) valueElem.textContent = `${safeHp}/${safeMax}`;
+  tooltip.style.left = `${rect.left + rect.width / 2}px`;
+  tooltip.style.top = `${rect.top - 10}px`;
+  tooltip.style.display = "block";
+}
+
+function hideCreatureHpTooltip() {
+  const tooltip = typeof creatureHpTooltip !== "undefined" ? creatureHpTooltip : document.getElementById("creatureHpTooltip");
+  if (tooltip) tooltip.style.display = "none";
+}
+
+function bindCreatureHpTooltip(cell, title, getHp) {
+  if (!cell || cell.dataset.hpTooltip === "1") return;
+  cell.dataset.hpTooltip = "1";
+  cell.addEventListener("mouseenter", () => {
+    const hpData = typeof getHp === "function" ? getHp() : null;
+    if (!hpData) return;
+    showCreatureHpTooltip(title, hpData.hp, hpData.maxHp, cell);
+  });
+  cell.addEventListener("mouseleave", hideCreatureHpTooltip);
 }
 
 function ensureTrollTokenAt(x, y) {
@@ -768,9 +800,11 @@ function ensureTrollTokenAt(x, y) {
     token.alt = "Тролли";
     cell.appendChild(token);
   }
-  const trollArmy =
-    typeof getTimeOfDay === "function" && getTimeOfDay().key === "evening" ? 20 : 25;
-  cell.title = `Тролли: ${trollArmy} войск`;
+  bindCreatureHpTooltip(cell, "Тролли", () => {
+    const trollArmy =
+      typeof getTimeOfDay === "function" && getTimeOfDay().key === "evening" ? 20 : 25;
+    return { hp: trollArmy, maxHp: trollArmy };
+  });
 }
 
 function updateTrollVisual() {
