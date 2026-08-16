@@ -1741,11 +1741,25 @@ function getBarbarianArmyCapForTurn() {
   return BARBARIAN_CAP_EARLY;
 }
 
-function getRandomBarbarianTargetIndex() {
+function getRandomBarbarianTargetIndex(entry = null) {
   const indexes = players
     .map((player, index) => (player ? index : -1))
     .filter(index => index >= 0);
   if (!indexes.length) return null;
+  if (indexes.length < 2) return indexes[0];
+  const counts = {};
+  indexes.forEach(index => { counts[index] = 0; });
+  barbarianCells.forEach(cell => {
+    if (cell === entry) return;
+    if (Number.isInteger(cell.targetPlayerIndex)) {
+      counts[cell.targetPlayerIndex] = (counts[cell.targetPlayerIndex] || 0) + 1;
+    }
+  });
+  const [a, b] = indexes;
+  // Баланс: если один игрок уже получает на 2+ атаки больше другого —
+  // цель принудительно переключается на второго.
+  if (counts[a] >= counts[b] + 2) return b;
+  if (counts[b] >= counts[a] + 2) return a;
   return indexes[Math.floor(Math.random() * indexes.length)];
 }
 
@@ -1948,7 +1962,7 @@ function tickBarbarianCells() {
     if (entry.attackTimer <= 0) {
       resolveBarbarianCastleAttack(entry);
       entry.attackTimer = BARBARIAN_ATTACK_TIMER_START;
-      entry.targetPlayerIndex = getRandomBarbarianTargetIndex();
+      entry.targetPlayerIndex = getRandomBarbarianTargetIndex(entry);
     }
     updateBarbarianTimerVisual(entry);
   });
