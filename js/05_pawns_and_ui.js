@@ -10953,6 +10953,10 @@ function upgradeCastleLevel() {
   ensureCastleStats(castleModalKey);
   updatePlayerResources(castleModalPlayerIndex);
   updateCastleBadge(castleModalKey);
+  const castleCell = grid[castleModalKey];
+  if (castleCell) {
+    restoreImportantNodeCell(castleModalKey, castleCell);
+  }
   refreshCastleModal(castleModalKey, castleModalPlayerIndex);
   recalcPlayerResourceIncome(castleModalPlayerIndex);
   flashPrice(castleUpgradeBtn, upgradeCost, "assets/icons/icon-resources.png", "Р РµСЃСѓСЂСЃС‹");

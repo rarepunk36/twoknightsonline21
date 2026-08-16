@@ -165,6 +165,14 @@ function syncBrokenResourceSmoke(cell, enabled) {
   cell.classList.add("broken-resource-smoking");
 }
 
+function getCastleIconForLevel(key) {
+  const stats = castleStatsByKey[key];
+  const level = Math.max(1, Math.min(3, Math.floor(Number(stats?.level) || 1)));
+  if (level >= 3) return { file: "castle3.png", alt: "Замок III" };
+  if (level >= 2) return { file: "castle2.png", alt: "Замок II" };
+  return null;
+}
+
 function restoreImportantNodeCell(key, cell) {
   const node = nodeByPos[key];
   if (!node || !cell) return false;
@@ -178,7 +186,16 @@ function restoreImportantNodeCell(key, cell) {
   const iconDef = ICONS_BY_ID[node.id];
   if (iconDef) {
     cell.textContent = "";
-    setCellIcon(cell, iconDef.file, iconDef.alt);
+    let iconFile = iconDef.file;
+    let iconAlt = iconDef.alt;
+    if (node.type === "castle") {
+      const levelIcon = getCastleIconForLevel(key);
+      if (levelIcon) {
+        iconFile = levelIcon.file;
+        iconAlt = levelIcon.alt;
+      }
+    }
+    setCellIcon(cell, iconFile, iconAlt);
   }
   if (node.id === 21) cell.classList.add("tavern-node");
   if (node.type === "castle") {
