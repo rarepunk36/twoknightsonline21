@@ -2077,7 +2077,7 @@ if (socket) {
       openTavernModal(payload.playerIndex);
       return;
     }
-    if (type === "showBarbarianRaidModal" && typeof openBarbarianRaidModal === "function") {
+    if (type === "barbarianRaidNotify" && typeof openBarbarianRaidModal === "function") {
       openBarbarianRaidModal(String(payload.text || ""));
       return;
     }

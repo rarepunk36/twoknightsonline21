@@ -5950,9 +5950,9 @@ if (trollCaveClose) {
   trollCaveClose.addEventListener("click", closeTrollCaveModal);
 }
 
-function openBarbarianRaidModal(text) {
+function openBarbarianRaidModal(html) {
   if (!barbarianRaidModal || !barbarianRaidText) return;
-  barbarianRaidText.textContent = text;
+  barbarianRaidText.innerHTML = html;
   barbarianRaidModal.style.display = "flex";
 }
 

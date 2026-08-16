@@ -1909,7 +1909,7 @@ function handleBarbarianRespawns() {
 
 function resolveBarbarianCastleAttack(entry) {
   const target = players[entry.targetPlayerIndex];
-  if (!target) return;
+  if (!target) return null;
   const ratio = turnCounter >= BARBARIAN_LATE_GAME_TURN
     ? BARBARIAN_CASTLE_STEAL_RATIO_LATE
     : BARBARIAN_CASTLE_STEAL_RATIO;
@@ -1923,30 +1923,47 @@ function resolveBarbarianCastleAttack(entry) {
   if (typeof updatePlayerResources === "function") {
     updatePlayerResources(entry.targetPlayerIndex);
   }
-  const targetName = target.name || `Игрок ${entry.targetPlayerIndex + 1}`;
-  if (goldStolen > 0 || resourcesStolen > 0) {
-    if (typeof showPickupToast === "function") {
-      showPickupToast(
-        `Варвары напали на замок ${targetName}: украдено ${goldStolen} золота и ${resourcesStolen} ресурсов. Куш спрятан в их лагере.`
-      );
+  if (goldStolen <= 0 && resourcesStolen <= 0) return null;
+  return {
+    playerIndex: entry.targetPlayerIndex,
+    gold: goldStolen,
+    resources: resourcesStolen,
+    remainingGold: Math.max(0, target.resources?.gold || 0),
+    remainingResources: Math.max(0, target.resources?.resources || 0)
+  };
+}
+
+function notifyBarbarianRaid(report) {
+  if (!report) return;
+  const text = [
+    "<strong>Варвары напали на ваш замок!</strong>",
+    "",
+    "Похищено:",
+    `Золото: <strong>${report.gold}</strong>`,
+    `Ресурсы: <strong>${report.resources}</strong>`,
+    "",
+    "В казне осталось:",
+    `Золото: ${report.remainingGold}`,
+    `Ресурсы: ${report.remainingResources}`,
+    "",
+    "Куш спрятан в лагере варваров — победите их, чтобы вернуть украденное."
+  ].join("<br>");
+  if (
+    typeof shouldDelegatePrivateUiToPlayer === "function" &&
+    shouldDelegatePrivateUiToPlayer(report.playerIndex)
+  ) {
+    if (typeof emitPrivateUiToPlayer === "function") {
+      emitPrivateUiToPlayer(report.playerIndex, "barbarianRaidNotify", { text });
     }
-    const victimMessage = `Варвары напали на ваш замок!\nУкрадено: ${goldStolen} золота, ${resourcesStolen} ресурсов.\nКуш спрятан в их лагере — верните его, победив варваров.`;
-    if (
-      typeof shouldDelegatePrivateUiToPlayer === "function" &&
-      shouldDelegatePrivateUiToPlayer(entry.targetPlayerIndex)
-    ) {
-      if (typeof emitPrivateUiToPlayer === "function") {
-        emitPrivateUiToPlayer(entry.targetPlayerIndex, "showBarbarianRaidModal", { text: victimMessage });
-      }
-    } else if (typeof openBarbarianRaidModal === "function") {
-      openBarbarianRaidModal(victimMessage);
-    }
+  } else if (typeof openBarbarianRaidModal === "function") {
+    openBarbarianRaidModal(text);
   }
-  if (typeof emitStateNow === "function") emitStateNow(true);
 }
 
 function tickBarbarianCells() {
   if (!barbarianPhaseStarted) return;
+  const raidReports = {};
+  let raidsHappened = false;
   barbarianCells.forEach(entry => {
     if (!entry) return;
     const spawnTurn = Number.isInteger(entry.spawnTurn) ? entry.spawnTurn : turnCounter;
@@ -1965,12 +1982,28 @@ function tickBarbarianCells() {
     }
     entry.attackTimer -= 1;
     if (entry.attackTimer <= 0) {
-      resolveBarbarianCastleAttack(entry);
+      const report = resolveBarbarianCastleAttack(entry);
+      if (report) {
+        raidsHappened = true;
+        const existing = raidReports[report.playerIndex];
+        if (existing) {
+          existing.gold += report.gold;
+          existing.resources += report.resources;
+          existing.remainingGold = report.remainingGold;
+          existing.remainingResources = report.remainingResources;
+        } else {
+          raidReports[report.playerIndex] = { ...report };
+        }
+      }
       entry.attackTimer = BARBARIAN_ATTACK_TIMER_START;
       entry.targetPlayerIndex = getRandomBarbarianTargetIndex(entry);
     }
     updateBarbarianTimerVisual(entry);
   });
+  Object.values(raidReports).forEach(report => notifyBarbarianRaid(report));
+  if (raidsHappened && typeof emitStateNow === "function") {
+    emitStateNow(true);
+  }
 }
 
 function scaleBarbarianReward(army, min, max) {
