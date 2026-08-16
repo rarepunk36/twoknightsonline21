@@ -11949,8 +11949,7 @@ function finalizeMove(gridX, gridY) {
         } else {
           castleOwnersByKey[castleKey] = currentPlayerIndex;
           node.elem.classList.add("owned");
-          node.elem.style.background = currentPlayer.color;
-          node.elem.style.borderColor = currentPlayer.color;
+          node.elem.style.setProperty("--owner-glow", currentPlayer.color || "transparent");
           if (typeof updateCastleBars === "function") updateCastleBars(castleKey);
           recalcPlayerResourceIncome(currentPlayerIndex);
         }
@@ -11968,8 +11967,7 @@ function finalizeMove(gridX, gridY) {
       } else {
         castleOwnersByKey[castleKey] = currentPlayerIndex;
         node.elem.classList.add("owned");
-        node.elem.style.background = currentPlayer.color;
-        node.elem.style.borderColor = currentPlayer.color;
+        node.elem.style.setProperty("--owner-glow", currentPlayer.color || "transparent");
         if (typeof updateCastleBars === "function") updateCastleBars(castleKey);
         if (typeof previousOwner === "number") {
           recalcPlayerResourceIncome(previousOwner);
