@@ -86,7 +86,6 @@ const caveEntranceChoiceText = document.getElementById("caveEntranceChoiceText")
 const caveEnterBtn = document.getElementById("caveEnterBtn");
 const caveAttackBtn = document.getElementById("caveAttackBtn");
 const creatureHpTooltip = document.getElementById("creatureHpTooltip");
-const creatureHpTitle = document.getElementById("creatureHpTitle");
 const creatureHpFill = document.getElementById("creatureHpFill");
 const creatureHpValue = document.getElementById("creatureHpValue");
 const timeOfDayModal = document.getElementById("timeOfDayModal");

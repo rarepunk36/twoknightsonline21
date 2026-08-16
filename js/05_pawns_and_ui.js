@@ -2315,6 +2315,12 @@ function clearWerewolfCell(x, y) {
   const key = `${x},${y}`;
   const cell = grid[key];
   if (!cell) return;
+  if (typeof unbindCreatureHpTooltip === "function") {
+    unbindCreatureHpTooltip(cell);
+  }
+  if (typeof hideCreatureHpTooltip === "function") {
+    hideCreatureHpTooltip();
+  }
   const node = nodeByPos[key];
   if (node) {
     restoreImportantNodeCell(key, cell);

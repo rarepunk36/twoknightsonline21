@@ -750,20 +750,19 @@ function clearTrollTokenAt(key) {
   const token = cell.querySelector(".troll-token");
   if (token) token.remove();
   cell.classList.remove("troll");
+  unbindCreatureHpTooltip(cell);
   hideCreatureHpTooltip();
 }
 
 function showCreatureHpTooltip(title, hp, maxHp, anchorCell) {
   const tooltip = typeof creatureHpTooltip !== "undefined" ? creatureHpTooltip : document.getElementById("creatureHpTooltip");
   if (!tooltip || !anchorCell) return;
-  const titleElem = typeof creatureHpTitle !== "undefined" ? creatureHpTitle : document.getElementById("creatureHpTitle");
   const fillElem = typeof creatureHpFill !== "undefined" ? creatureHpFill : document.getElementById("creatureHpFill");
   const valueElem = typeof creatureHpValue !== "undefined" ? creatureHpValue : document.getElementById("creatureHpValue");
   const rect = anchorCell.getBoundingClientRect();
   const safeHp = Math.max(0, Math.floor(Number(hp) || 0));
   const safeMax = Math.max(1, Math.floor(Number(maxHp) || 1));
   const pct = Math.min(100, Math.round((safeHp / safeMax) * 100));
-  if (titleElem) titleElem.textContent = title;
   if (fillElem) fillElem.style.width = `${pct}%`;
   if (valueElem) valueElem.textContent = `${safeHp}/${safeMax}`;
   tooltip.style.left = `${rect.left + rect.width / 2}px`;
@@ -779,12 +778,33 @@ function hideCreatureHpTooltip() {
 function bindCreatureHpTooltip(cell, title, getHp) {
   if (!cell || cell.dataset.hpTooltip === "1") return;
   cell.dataset.hpTooltip = "1";
-  cell.addEventListener("mouseenter", () => {
+  const enterHandler = () => {
+    const stillHasCreature =
+      cell.classList.contains("werewolf") ||
+      cell.classList.contains("troll") ||
+      cell.querySelector(".troll-token");
+    if (!stillHasCreature) {
+      hideCreatureHpTooltip();
+      return;
+    }
     const hpData = typeof getHp === "function" ? getHp() : null;
     if (!hpData) return;
     showCreatureHpTooltip(title, hpData.hp, hpData.maxHp, cell);
-  });
-  cell.addEventListener("mouseleave", hideCreatureHpTooltip);
+  };
+  const leaveHandler = () => hideCreatureHpTooltip();
+  cell.addEventListener("mouseenter", enterHandler);
+  cell.addEventListener("mouseleave", leaveHandler);
+  cell._hpTooltipEnter = enterHandler;
+  cell._hpTooltipLeave = leaveHandler;
+}
+
+function unbindCreatureHpTooltip(cell) {
+  if (!cell) return;
+  if (cell._hpTooltipEnter) cell.removeEventListener("mouseenter", cell._hpTooltipEnter);
+  if (cell._hpTooltipLeave) cell.removeEventListener("mouseleave", cell._hpTooltipLeave);
+  cell._hpTooltipEnter = null;
+  cell._hpTooltipLeave = null;
+  delete cell.dataset.hpTooltip;
 }
 
 function ensureTrollTokenAt(x, y) {

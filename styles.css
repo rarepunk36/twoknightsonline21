@@ -2844,23 +2844,15 @@
   position: fixed;
   display: none;
   z-index: 300;
-  min-width: 160px;
-  padding: 10px 13px 12px;
+  min-width: 118px;
+  padding: 5px 6px;
   background:
     linear-gradient(160deg, rgba(26, 13, 9, 0.97), rgba(12, 6, 4, 0.97));
   border: 1px solid rgba(255, 122, 92, 0.5);
-  border-radius: 12px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 0, 0, 0.4);
+  border-radius: 999px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.4);
   transform: translate(-50%, -100%);
   pointer-events: none;
-}
-.creature-hp-title {
-  margin-bottom: 7px;
-  color: #ffe6cd;
-  font-weight: 800;
-  font-size: 0.86rem;
-  letter-spacing: 0.03em;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
 .creature-hp-bar {
   position: relative;
