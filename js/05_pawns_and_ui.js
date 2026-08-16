@@ -275,7 +275,7 @@ const PLAYER_BATTLE_CARD_RULES = {
     name: "Оборона",
     mark: "◆",
     always: "75% армии уходит в резерв и точно выживает.",
-    victory: "100% шанс выбить случайный предмет противника.",
+    victory: "100% шанс украсть случайный предмет противника.",
     beats: "attack"
   },
   feint: {
@@ -9363,28 +9363,43 @@ function getPlayerBattleCardWinnerIndex(attackerIndex, defenderIndex, attackerCa
     : defenderIndex;
 }
 
-function getPlayerBattleDroppableItems(player) {
+function getPlayerBattleDroppableItems(player, thief = null) {
   const items = [];
-  const addCountItem = (property, label, onRemove = null) => {
+  const addCountItem = (property, label, attackPerUnit = 0, onTransfer = null) => {
     const count = Math.max(0, player[property] || 0);
     if (count <= 0) return;
     items.push({
       label: count > 1 ? `${label} ×${count}` : label,
       remove() {
-        const before = Math.max(0, player[property] || 0);
+        const stolen = Math.max(0, player[property] || 0);
         player[property] = 0;
-        if (onRemove) onRemove(before);
+        if (attackPerUnit > 0) {
+          player.attack = Math.max(0, (player.attack || 0) - attackPerUnit * stolen);
+        }
+        if (thief && stolen > 0) {
+          thief[property] = (thief[property] || 0) + stolen;
+          if (attackPerUnit > 0) {
+            thief.attack = (thief.attack || 0) + attackPerUnit * stolen;
+          }
+        }
+        if (onTransfer) onTransfer(stolen);
       }
     });
   };
-  const addBooleanItem = (property, label, attackLoss = 0) => {
+  const addBooleanItem = (property, label, attackBonus = 0) => {
     if (!player[property]) return;
     items.push({
       label,
       remove() {
         player[property] = false;
-        if (attackLoss > 0) {
-          player.attack = Math.max(0, (player.attack || 0) - attackLoss);
+        if (attackBonus > 0) {
+          player.attack = Math.max(0, (player.attack || 0) - attackBonus);
+        }
+        if (thief) {
+          thief[property] = true;
+          if (attackBonus > 0) {
+            thief.attack = (thief.attack || 0) + attackBonus;
+          }
         }
       }
     });
@@ -9403,10 +9418,14 @@ function getPlayerBattleDroppableItems(player) {
   addCountItem(
     "ballistaCount",
     getPlayerBallistaLevel(player) >= 2 ? "Баллиста II" : "Баллиста",
-    before => {
-      if (before <= 1) {
+    0,
+    stolen => {
+      if ((player.ballistaCount || 0) <= 0) {
         player.ballistaLevel = 0;
         player.ballistaShotsThisTurn = 0;
+      }
+      if (thief && stolen > 0) {
+        thief.ballistaLevel = Math.max(1, thief.ballistaLevel || 0);
       }
     }
   );
@@ -9415,28 +9434,33 @@ function getPlayerBattleDroppableItems(player) {
   addCountItem("trapStunCount", "Ловушка-стан");
   addCountItem("bridgeCount", "Мост");
   addCountItem("ringCount", "Кольцо убеждения");
-  addCountItem("terrorRingCount", "Кольцо ужаса", () => {
-    player.attack = Math.max(0, (player.attack || 0) - 8);
-  });
+  addCountItem("terrorRingCount", "Кольцо ужаса", 8);
   addCountItem("rainbowStoneCount", "Радужный камень");
   addCountItem("mysticStoneCount", "Необычный камень");
-  addCountItem("trollClubCount", "Дубинка троллей", before => {
-    if (before === 1) player.attack = Math.max(0, (player.attack || 0) - 8);
+  addCountItem("trollClubCount", "Дубинка троллей", 0, stolen => {
+    if (stolen > 0) {
+      player.attack = Math.max(0, (player.attack || 0) - 8);
+    }
+    if (thief && stolen > 0 && (thief.trollClubCount || 0) <= stolen) {
+      thief.attack = (thief.attack || 0) + 8;
+    }
   });
   addCountItem("heroHiltCount", "Рукоять меча героя");
-  addCountItem("werewolfFangCount", "Клык оборотня", () => {
-    player.attack = Math.max(0, (player.attack || 0) - 12);
-  });
+  addCountItem("werewolfFangCount", "Клык оборотня", 12);
   addCountItem("werewolfAmuletCount", "Амулет оборотня");
   addCountItem("luckAmuletCount", "Амулет удачи");
   if ((player.builderAmuletCount || 0) > 0) {
     items.push({
       label: "Амулет строителя",
       remove() {
-        player.builderAmuletCount = Math.max(0, (player.builderAmuletCount || 0) - 1);
-        if (player.builderAmuletCount <= 0) {
-          player.builderAmuletChargeCount = 0;
-          player.builderAmuletTurnCounter = 0;
+        const stolen = Math.max(0, player.builderAmuletCount || 0);
+        player.builderAmuletCount = 0;
+        player.builderAmuletChargeCount = 0;
+        player.builderAmuletTurnCounter = 0;
+        if (thief && stolen > 0) {
+          thief.builderAmuletCount = (thief.builderAmuletCount || 0) + stolen;
+          thief.builderAmuletChargeCount = 0;
+          thief.builderAmuletTurnCounter = 0;
         }
       }
     });
@@ -9447,14 +9471,17 @@ function getPlayerBattleDroppableItems(player) {
   return items;
 }
 
-function tryKnockRandomPlayerBattleItem(targetPlayerIndex, chance = 1) {
+function tryKnockRandomPlayerBattleItem(sourcePlayerIndex, targetPlayerIndex, chance = 1) {
+  const source = players[sourcePlayerIndex];
   const target = players[targetPlayerIndex];
-  if (!target) return { success: false, reason: "no-target" };
-  const items = getPlayerBattleDroppableItems(target);
+  if (!source || !target) return { success: false, reason: "no-target" };
+  const items = getPlayerBattleDroppableItems(target, source);
   if (!items.length) return { success: false, reason: "empty" };
   if (Math.random() >= chance) return { success: false, reason: "chance" };
   const item = items[Math.floor(Math.random() * items.length)];
   item.remove();
+  updatePlayerResources(sourcePlayerIndex);
+  updateInventory(sourcePlayerIndex);
   updatePlayerResources(targetPlayerIndex);
   updateInventory(targetPlayerIndex);
   return { success: true, label: item.label };
@@ -9515,13 +9542,13 @@ function resolveBattle(attackerIndex, defenderIndex, options = {}) {
     feintStealResult = {
       sourcePlayerIndex: attackerIndex,
       targetPlayerIndex: defenderIndex,
-      ...tryKnockRandomPlayerBattleItem(defenderIndex, 0.5)
+      ...tryKnockRandomPlayerBattleItem(attackerIndex, defenderIndex, 0.5)
     };
   } else if (defenderCard === "feint") {
     feintStealResult = {
       sourcePlayerIndex: defenderIndex,
       targetPlayerIndex: attackerIndex,
-      ...tryKnockRandomPlayerBattleItem(attackerIndex, 0.5)
+      ...tryKnockRandomPlayerBattleItem(defenderIndex, attackerIndex, 0.5)
     };
   }
 
@@ -9534,7 +9561,7 @@ function resolveBattle(attackerIndex, defenderIndex, options = {}) {
       knockedItem = {
         sourcePlayerIndex: attackerIndex,
         targetPlayerIndex: defenderIndex,
-        ...tryKnockRandomPlayerBattleItem(defenderIndex)
+        ...tryKnockRandomPlayerBattleItem(attackerIndex, defenderIndex)
       };
     }
   } else if (cardWinnerIndex === defenderIndex) {
@@ -9544,7 +9571,7 @@ function resolveBattle(attackerIndex, defenderIndex, options = {}) {
       knockedItem = {
         sourcePlayerIndex: defenderIndex,
         targetPlayerIndex: attackerIndex,
-        ...tryKnockRandomPlayerBattleItem(attackerIndex)
+        ...tryKnockRandomPlayerBattleItem(defenderIndex, attackerIndex)
       };
     }
   }
@@ -9568,7 +9595,9 @@ function resolveBattle(attackerIndex, defenderIndex, options = {}) {
   attacker.pocket.army = attackerRemaining;
   defender.pocket.army = defenderRemaining;
 
-  const winnerIndex = defenderRemaining > attackerRemaining ? defenderIndex : attackerIndex;
+  // Побеждает тот, у кого больше осталось СРАЖАЮЩИХСЯ войск после обмена.
+  // Резерв «Обороны» выживает, но не приносит победу в бою.
+  const winnerIndex = defenderFighting > attackerFighting ? defenderIndex : attackerIndex;
   const loserIndex = winnerIndex === attackerIndex ? defenderIndex : attackerIndex;
   const loser = players[loserIndex];
   let influenceLoss = 0;
@@ -10283,11 +10312,11 @@ function buildBattleSummaryLines(result) {
       }
       if (result.knockedItem) {
         if (result.knockedItem.success) {
-          lines.push(`Оборона игрока ${result.knockedItem.sourcePlayerIndex + 1}: выбит предмет «${result.knockedItem.label}».`);
+          lines.push(`Оборона игрока ${result.knockedItem.sourcePlayerIndex + 1}: украден предмет «${result.knockedItem.label}» в инвентарь.`);
         } else if (result.knockedItem.reason === "empty") {
-          lines.push("Оборона сработала, но в инвентаре противника нечего выбивать.");
+          lines.push("Оборона сработала, но в инвентаре противника нечего красть.");
         } else {
-          lines.push("Оборона: попытка выбить предмет не удалась.");
+          lines.push("Оборона: попытка украсть предмет не удалась.");
         }
       }
       if (result.defenseCardProtectedLoot) {
@@ -10298,7 +10327,7 @@ function buildBattleSummaryLines(result) {
         "<strong>ЛИЧНЫЕ АТАКИ</strong>",
         `Защищающийся герой уничтожил ${result.defenderPersonalDamage} войск.`,
         `Нападающий герой уничтожил ${result.attackerPersonalDamage} войск.`,
-        `Обмен армий 1 к 1: каждая сторона потеряла ${result.armyExchangeLoss} войск.`,
+        `Основной бой армий: обе стороны потеряли по ${result.armyExchangeLoss} войск.`,
         "\u00A0"
       );
     }
