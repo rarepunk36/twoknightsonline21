@@ -1399,6 +1399,10 @@ function shouldRevealTrapStunField(ownerIndex) {
 function renderTrapStunFields() {
   Object.keys(grid).forEach(clearTrapMarkerAt);
   clearTrapStunFieldOverlays();
+  if (
+    typeof getVisibleWorldLayer === "function" &&
+    getVisibleWorldLayer() !== "upper"
+  ) return;
   trapStunFields.forEach(field => {
     if (!shouldRevealTrapStunField(field.ownerIndex)) return;
     if (typeof game === "undefined" || !game) return;

@@ -3731,6 +3731,7 @@ function renderUpperWorldView() {
 }
 
 function renderUnderworldView(playerIndex) {
+  if (typeof renderTrapStunFields === "function") renderTrapStunFields();
   Object.keys(grid).forEach(key => {
     resetCellForVisibleRender(key);
     grid[key].classList.remove("blocked");
@@ -3759,6 +3760,7 @@ function renderUnderworldView(playerIndex) {
 }
 
 function renderTrollCaveView() {
+  if (typeof renderTrapStunFields === "function") renderTrapStunFields();
   Object.entries(grid).forEach(([key, cell]) => {
     const [x, y] = key.split(",").map(Number);
     resetCellForVisibleRender(key);
