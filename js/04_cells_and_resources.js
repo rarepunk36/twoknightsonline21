@@ -1790,6 +1790,13 @@ function updateBarbarianTimerVisual(entry) {
   badge.title = target
     ? `Варвары нападут на замок ${target.name || `Игрок ${entry.targetPlayerIndex + 1}`} через ${Math.max(0, entry.attackTimer || 0)} ходов`
     : "Варвары выбирают цель";
+  if (typeof bindCreatureHpTooltip === "function") {
+    bindCreatureHpTooltip(cell, "Варвары", () => {
+      const current = barbarianCells.find(bc => bc.key === key);
+      const army = Math.max(0, Math.floor(Number(current?.army) || 0));
+      return { hp: army, maxHp: army };
+    });
+  }
 }
 
 function updateBarbarianCellVisual(entry) {
@@ -1803,13 +1810,6 @@ function updateBarbarianCellVisual(entry) {
   setCellIcon(cell, "barbarian_village.png", "Варвары");
   cell.setAttribute("data-barbarian", "true");
   updateBarbarianTimerVisual(entry);
-  if (typeof bindCreatureHpTooltip === "function") {
-    bindCreatureHpTooltip(cell, "Варвары", () => {
-      const current = barbarianCells.find(bc => bc.key === key);
-      const army = Math.max(0, Math.floor(Number(current?.army) || 0));
-      return { hp: army, maxHp: army };
-    });
-  }
 }
 
 function syncBarbarianStrengths() {
