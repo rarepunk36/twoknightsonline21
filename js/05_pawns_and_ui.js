@@ -2700,7 +2700,9 @@ function buildWerewolfBattleResult(playerIndex, options = {}) {
   const playerAttackDamage = 0;
   let playerArmyDamage = 0;
   if (werewolf.health > 0) {
-    playerArmyDamage = Math.min(werewolf.health, Math.max(0, player.pocket.army || 0));
+    // Урон оборотню наносится ОДНОВРЕМЕННО с его ударом — от изначальной
+    // армии игрока, а не от остатка после атаки оборотня.
+    playerArmyDamage = Math.min(werewolf.health, initialArmy);
     werewolf.health = Math.max(0, werewolf.health - playerArmyDamage);
   }
   updatePlayerResources(playerIndex);
@@ -6589,6 +6591,14 @@ function closeTavernSpectatorView() {
 function openTavernModal(playerIndex) {
   if (!tavernModal || !isPlayerAtTavern(playerIndex)) return;
   pendingTavernPlayerIndex = playerIndex;
+  if (typeof localPlayerIndex === "number" && playerIndex === localPlayerIndex) {
+    tavernSpectatorViewActive = false;
+    [tavernModal, tavernWheelModal, tavernDragonModal, tavernFishkaModal].forEach(modal => {
+      modal?.querySelectorAll("button").forEach(button => { button.disabled = false; });
+    });
+    if (tavernWheelBetInput) tavernWheelBetInput.disabled = false;
+    if (tavernDragonBetInput) tavernDragonBetInput.disabled = false;
+  }
   prepareBlockingModalTurn(playerIndex);
   if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
     emitPrivateUiToPlayer(playerIndex, "showTavernModal", { playerIndex });
