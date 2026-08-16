@@ -9279,12 +9279,14 @@ function resolveBarbarianBattle(playerIndex, barbarian) {
   const influenceReward = playerWon ? Math.floor(scaleBarbarianReward(initialDefArmy, 35, 60) * rewardMultiplier) : 0;
   const goldReward = playerWon ? Math.floor(scaleBarbarianReward(initialDefArmy, 100, 175) * rewardMultiplier) : 0;
   const resourceReward = playerWon ? Math.floor(scaleBarbarianReward(initialDefArmy, 10, 17) * rewardMultiplier) : 0;
+  const lootGold = playerWon ? Math.max(0, Math.floor(Number(barbarian.lootGold) || 0)) : 0;
+  const lootResources = playerWon ? Math.max(0, Math.floor(Number(barbarian.lootResources) || 0)) : 0;
   let penaltyGold = 0;
   let penaltyResources = 0;
   if (playerWon) {
     player.resources.influence += influenceReward;
-    player.pocket.gold += goldReward;
-    player.pocket.resources += resourceReward;
+    player.pocket.gold += goldReward + lootGold;
+    player.pocket.resources += resourceReward + lootResources;
     updatePlayerResources(playerIndex);
   } else {
     penaltyGold = Math.floor(player.pocket.gold * 0.5);
@@ -9307,6 +9309,8 @@ function resolveBarbarianBattle(playerIndex, barbarian) {
     influenceReward,
     goldReward,
     resourceReward,
+    lootGold,
+    lootResources,
     penaltyGold,
     penaltyResources,
     defenderInitial: initialDefArmy
@@ -10182,6 +10186,10 @@ function buildBattleSummaryLines(result) {
         result.penaltyGold || result.penaltyResources
           ? `Проигравший потерял ${result.penaltyGold || 0} золота и ${result.penaltyResources || 0} ресурсов`
           : null;
+      const lootLine =
+        result.winnerIndex === result.attackerIndex && (result.lootGold || result.lootResources)
+          ? `Куш из лагеря: +${result.lootGold || 0} золота, +${result.lootResources || 0} ресурсов`
+          : null;
       return [
         "<strong>ИТОГИ БОЯ</strong>",
         `${result.attackerName}: Потерял ${result.attackerLost} войск`,
@@ -10190,6 +10198,7 @@ function buildBattleSummaryLines(result) {
         " ",
         `Победитель : ${result.winnerName}`,
         rewardLine,
+        lootLine,
         penaltyLine
       ].filter(Boolean);
     }

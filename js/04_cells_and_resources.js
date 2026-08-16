@@ -1713,7 +1713,13 @@ function updateBarbarianCellVisual(entry) {
     if (getTimeOfDay().key === "night") displayArmy = Math.ceil(entry.army * 1.5);
     else if (getTimeOfDay().key === "morning") displayArmy = Math.ceil(entry.army * 0.7);
   }
-  cell.title = `ВАРВАРЫ: ${displayArmy} войск`;
+  const lootGold = Math.max(0, Math.floor(Number(entry.lootGold) || 0));
+  const lootResources = Math.max(0, Math.floor(Number(entry.lootResources) || 0));
+  cell.title = `ВАРВАРЫ: ${displayArmy} войск${
+    lootGold > 0 || lootResources > 0
+      ? `\nКуш в лагере: ${lootGold} золота, ${lootResources} ресурсов`
+      : ""
+  }`;
   updateBarbarianTimerVisual(entry);
 }
 
@@ -1815,6 +1821,9 @@ function resolveBarbarianCastleAttack(entry) {
   const resourcesStolen = Math.floor(Math.max(0, target.resources?.resources || 0) * ratio);
   target.resources.gold = Math.max(0, (target.resources?.gold || 0) - goldStolen);
   target.resources.resources = Math.max(0, (target.resources?.resources || 0) - resourcesStolen);
+  // Украденное накапливается в лагере варваров — заберёт тот, кто их убьёт.
+  entry.lootGold = (entry.lootGold || 0) + goldStolen;
+  entry.lootResources = (entry.lootResources || 0) + resourcesStolen;
   if (typeof updatePlayerResources === "function") {
     updatePlayerResources(entry.targetPlayerIndex);
   }
@@ -1822,7 +1831,7 @@ function resolveBarbarianCastleAttack(entry) {
   if (goldStolen > 0 || resourcesStolen > 0) {
     if (typeof showPickupToast === "function") {
       showPickupToast(
-        `Варвары напали на замок ${targetName}: украдено ${goldStolen} золота и ${resourcesStolen} ресурсов.`
+        `Варвары напали на замок ${targetName}: украдено ${goldStolen} золота и ${resourcesStolen} ресурсов. Куш спрятан в их лагере.`
       );
     }
   }
