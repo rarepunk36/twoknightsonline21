@@ -9224,11 +9224,9 @@ function stealResources(winnerIndex, loserIndex, options = {}) {
   const loser = players[loserIndex];
     const stealRatio = Math.max(0, Math.min(1, Number(options.stealRatio ?? 0.8)));
     const stolen = {gold: 0, army: 0, resources: 0};
-    ["gold", "army", "resources"].forEach(type => {
-      const protectedAmount = type === "army"
-        ? Math.min(loser.pocket.army || 0, Math.max(0, options.protectedArmy || 0))
-        : 0;
-      const availableAmount = Math.max(0, (loser.pocket[type] || 0) - protectedAmount);
+    // Войска из кармана не воруются — только золото и ресурсы.
+    ["gold", "resources"].forEach(type => {
+      const availableAmount = Math.max(0, loser.pocket[type] || 0);
       const amount = Math.floor(availableAmount * stealRatio);
       if (amount <= 0) return;
       loser.pocket[type] -= amount;
