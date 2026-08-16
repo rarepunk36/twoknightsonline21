@@ -1811,10 +1811,10 @@ function resolveBarbarianCastleAttack(entry) {
   const ratio = turnCounter >= BARBARIAN_LATE_GAME_TURN
     ? BARBARIAN_CASTLE_STEAL_RATIO_LATE
     : BARBARIAN_CASTLE_STEAL_RATIO;
-  const goldStolen = Math.floor(Math.max(0, target.pocket.gold || 0) * ratio);
-  const resourcesStolen = Math.floor(Math.max(0, target.pocket.resources || 0) * ratio);
-  target.pocket.gold = Math.max(0, (target.pocket.gold || 0) - goldStolen);
-  target.pocket.resources = Math.max(0, (target.pocket.resources || 0) - resourcesStolen);
+  const goldStolen = Math.floor(Math.max(0, target.resources?.gold || 0) * ratio);
+  const resourcesStolen = Math.floor(Math.max(0, target.resources?.resources || 0) * ratio);
+  target.resources.gold = Math.max(0, (target.resources?.gold || 0) - goldStolen);
+  target.resources.resources = Math.max(0, (target.resources?.resources || 0) - resourcesStolen);
   if (typeof updatePlayerResources === "function") {
     updatePlayerResources(entry.targetPlayerIndex);
   }
