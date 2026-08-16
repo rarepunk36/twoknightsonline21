@@ -547,7 +547,7 @@
     }
     .cell .barbarian-timer-badge {
       position: absolute;
-      top: 2%;
+      top: -60%;
       left: 50%;
       transform: translateX(-50%);
       width: 42%;
@@ -564,7 +564,7 @@
       line-height: 1;
       text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
       box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.35);
-      z-index: 6;
+      z-index: 8;
       pointer-events: none;
     }
     .cell.has-icon {
@@ -730,7 +730,7 @@
 
 .player-panel {
       padding: clamp(10px, 0.9vw, 14px) clamp(10px, 1vw, 16px);
-      background: #132030;
+      background: #110e23;
       border: 1px solid #2a3b55;
       border-radius: 6px;
       font-size: clamp(0.8rem, 0.8vw, 0.95rem);
