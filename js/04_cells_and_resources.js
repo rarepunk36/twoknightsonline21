@@ -207,12 +207,10 @@ function restoreImportantNodeCell(key, cell) {
     const owner = typeof ownerIndex === "number" ? players?.[ownerIndex] : null;
     if (owner) {
       cell.classList.add("owned");
-      cell.style.background = owner.color || "";
-      cell.style.borderColor = owner.color || "";
+      cell.style.setProperty("--owner-glow", owner.color || "transparent");
     } else {
       cell.classList.remove("owned");
-      cell.style.background = "";
-      cell.style.borderColor = "";
+      cell.style.setProperty("--owner-glow", "transparent");
     }
     updateCastleBadge(key);
     updateCastleBars(key);

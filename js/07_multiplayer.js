@@ -775,12 +775,10 @@ function applyCastleOwnershipVisuals() {
     const owner = typeof ownerIndex === "number" ? players[ownerIndex] : null;
     if (owner) {
       node.elem.classList.add("owned");
-      node.elem.style.background = owner.color || "";
-      node.elem.style.borderColor = owner.color || "";
+      node.elem.style.setProperty("--owner-glow", owner.color || "transparent");
     } else {
       node.elem.classList.remove("owned");
-      node.elem.style.background = "";
-      node.elem.style.borderColor = "";
+      node.elem.style.setProperty("--owner-glow", "transparent");
     }
     if (typeof updateCastleBadge === "function") {
       updateCastleBadge(key);

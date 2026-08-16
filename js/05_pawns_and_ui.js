@@ -8497,8 +8497,7 @@ function openContextForKey(key, playerIndex) {
         } else {
           castleOwnersByKey[castleKey] = playerIndex;
           node.elem.classList.add("owned");
-          node.elem.style.background = player.color;
-          node.elem.style.borderColor = player.color;
+          node.elem.style.setProperty("--owner-glow", player.color || "transparent");
           if (typeof updateCastleBars === "function") updateCastleBars(castleKey);
           recalcPlayerResourceIncome(playerIndex);
         }
@@ -11944,8 +11943,7 @@ function finalizeMove(gridX, gridY) {
           showPickupToast("Нельзя захватить второй замок.");
           castleOwnersByKey[castleKey] = undefined;
           node.elem.classList.remove("owned");
-          node.elem.style.background = "";
-          node.elem.style.borderColor = "";
+          node.elem.style.setProperty("--owner-glow", "transparent");
           updateCastleBadge(castleKey);
           if (typeof updateCastleBars === "function") updateCastleBars(castleKey);
         } else {
@@ -12688,8 +12686,7 @@ function resetGameState() {
     const node = nodeByPos[key];
     if (node && node.elem) {
       node.elem.classList.remove("owned");
-      node.elem.style.background = "";
-      node.elem.style.borderColor = "";
+      node.elem.style.setProperty("--owner-glow", "transparent");
     }
   });
   Object.keys(castleStatsByKey).forEach(key => delete castleStatsByKey[key]);
