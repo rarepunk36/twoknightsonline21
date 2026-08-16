@@ -195,7 +195,11 @@ function restoreImportantNodeCell(key, cell) {
         iconAlt = levelIcon.alt;
       }
     }
-    setCellIcon(cell, iconFile, iconAlt);
+    const icon = setCellIcon(cell, iconFile, iconAlt);
+    if (icon && node.type === "castle") {
+      const level = Math.max(1, Math.min(3, Math.floor(Number(castleStatsByKey[key]?.level) || 1)));
+      icon.classList.add(`castle-icon-lvl-${level}`);
+    }
   }
   if (node.id === 21) cell.classList.add("tavern-node");
   if (node.type === "castle") {

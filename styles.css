@@ -582,6 +582,14 @@
       transform: translate(-50%, -50%);
       z-index: 6;
     }
+    .cell .icon.castle-icon-lvl-1 {
+      width: 144%;
+      height: 144%;
+    }
+    .cell .icon.castle-icon-lvl-3 {
+      width: 225%;
+      height: 225%;
+    }
     .cell.resource .icon.resource-icon {
       width: 145%;
       height: 145%;
