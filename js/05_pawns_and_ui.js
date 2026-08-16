@@ -3713,7 +3713,6 @@ function renderUpperWorldView() {
     let displayArmy = entry.army;
     if (getTimeOfDay().key === "night") displayArmy = Math.ceil(entry.army * 1.5);
     else if (getTimeOfDay().key === "morning") displayArmy = Math.ceil(entry.army * 0.7);
-    cell.title = `ВАРВАРЫ: ${displayArmy} войск`;
     cell.setAttribute("data-barbarian", "true");
     setCellIcon(cell, "barbarian_village.png", "Варвары");
     if (typeof updateBarbarianTimerVisual === "function") {

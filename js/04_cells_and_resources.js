@@ -1788,18 +1788,6 @@ function updateBarbarianCellVisual(entry) {
   cell.textContent = "";
   setCellIcon(cell, "barbarian_village.png", "Варвары");
   cell.setAttribute("data-barbarian", "true");
-  let displayArmy = entry.army;
-  if (typeof getTimeOfDay === "function") {
-    if (getTimeOfDay().key === "night") displayArmy = Math.ceil(entry.army * 1.5);
-    else if (getTimeOfDay().key === "morning") displayArmy = Math.ceil(entry.army * 0.7);
-  }
-  const lootGold = Math.max(0, Math.floor(Number(entry.lootGold) || 0));
-  const lootResources = Math.max(0, Math.floor(Number(entry.lootResources) || 0));
-  cell.title = `ВАРВАРЫ: ${displayArmy} войск${
-    lootGold > 0 || lootResources > 0
-      ? `\nКуш в лагере: ${lootGold} золота, ${lootResources} ресурсов`
-      : ""
-  }`;
   updateBarbarianTimerVisual(entry);
   if (typeof bindCreatureHpTooltip === "function") {
     bindCreatureHpTooltip(cell, "Варвары", () => {
@@ -1837,7 +1825,6 @@ function spawnBarbarianCell() {
   cell.classList.remove("inactive");
   cell.classList.add("important", "barbarian");
   cell.textContent = "В";
-  cell.title = "ВАРВАРЫ";
   setCellIcon(cell, "barbarian_village.png", "Варвары");
   cell.setAttribute("data-barbarian", "true");
   const entry = {
@@ -1853,7 +1840,6 @@ function spawnBarbarianCell() {
   };
   barbarianCells.push(entry);
   updateBarbarianCellVisual(entry);
-  cell.title = `ВАРВАРЫ: ${army} войск`;
   return true;
 }
 

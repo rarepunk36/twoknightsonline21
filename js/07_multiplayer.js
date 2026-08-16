@@ -730,8 +730,6 @@ function applyBarbarianCell(entry) {
   cell.classList.remove("inactive");
   cell.classList.add("important", "barbarian");
   cell.textContent = "";
-  const army = Math.max(0, Number(entry.army) || 0);
-  cell.title = `ВАРВАРЫ: ${army} войск`;
   cell.setAttribute("data-barbarian", "true");
   setCellIcon(cell, "barbarian_village.png", "Варвары");
   if (!Number.isInteger(entry.attackTimer)) entry.attackTimer = 25;
