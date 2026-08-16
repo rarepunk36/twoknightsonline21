@@ -2302,6 +2302,8 @@ function setCellToWerewolf(x, y) {
   cell.classList.add("important", "werewolf");
   cell.textContent = "";
   setCellIcon(cell, "werewolf.png", "Оборотень");
+  const health = Math.max(0, Math.floor(Number(werewolfState?.health) || 0));
+  cell.title = `Оборотень: ${health}/${WEREWOLF_MAX_HEALTH} ХП`;
   return true;
 }
 
@@ -3826,7 +3828,7 @@ function renderTrollCaveView() {
       token.src = "assets/icons/troll.png";
       token.alt = "Тролль";
       trollCell.appendChild(token);
-      trollCell.title = `Тролль · клетка ${getTrollCaveCellNumber(trollState.interiorX, trollState.interiorY)}`;
+      trollCell.title = `Тролль · клетка ${getTrollCaveCellNumber(trollState.interiorX, trollState.interiorY)} · ${getTimeOfDay().key === "evening" ? 20 : 25} войск`;
     }
   }
 }
@@ -3867,11 +3869,12 @@ function refreshVisibleWorld() {
   }
   applyFogOfWarMask();
   clearReachable();
-  if (ballistaModePlayerIndex === currentPlayerIndex) {
+  const modeViewerIndex = getViewerWorldPlayerIndex();
+  if (ballistaModePlayerIndex === modeViewerIndex) {
     showBallistaRange(ballistaModePlayerIndex);
-  } else if (harpoonModePlayerIndex === currentPlayerIndex) {
+  } else if (harpoonModePlayerIndex === modeViewerIndex) {
     showHarpoonTargets(harpoonModePlayerIndex);
-  } else if (voidShardModePlayerIndex === currentPlayerIndex) {
+  } else if (voidShardModePlayerIndex === modeViewerIndex) {
     showVoidShardTargets(voidShardModePlayerIndex);
   } else if (movesRemaining > 0) {
     showReachable();
@@ -5929,6 +5932,140 @@ if (stoneResultModal) {
 
 if (trollCaveClose) {
   trollCaveClose.addEventListener("click", closeTrollCaveModal);
+}
+
+function openBarbarianRaidModal(text) {
+  if (!barbarianRaidModal || !barbarianRaidText) return;
+  barbarianRaidText.textContent = text;
+  barbarianRaidModal.style.display = "flex";
+}
+
+function closeBarbarianRaidModal() {
+  if (barbarianRaidModal) barbarianRaidModal.style.display = "none";
+}
+
+if (barbarianRaidClose) {
+  barbarianRaidClose.addEventListener("click", closeBarbarianRaidModal);
+}
+
+let pendingCaveEntranceChoice = null;
+
+function openCaveEntranceChoiceModal(playerIndex, defenderIndex, caveIndex, gridX, gridY) {
+  prepareBlockingModalTurn(playerIndex);
+  const payload = { playerIndex, defenderIndex, caveIndex, gridX, gridY };
+  if (shouldDelegatePrivateUiToPlayer(playerIndex)) {
+    emitPrivateUiToPlayer(playerIndex, "showCaveEntranceChoiceModal", payload);
+    return;
+  }
+  showCaveEntranceChoiceModal(payload);
+}
+
+function showCaveEntranceChoiceModal(payload = {}) {
+  if (!caveEntranceChoiceModal) return;
+  pendingCaveEntranceChoice = {
+    playerIndex: payload.playerIndex,
+    defenderIndex: payload.defenderIndex,
+    caveIndex: payload.caveIndex,
+    gridX: payload.gridX,
+    gridY: payload.gridY
+  };
+  const defender = players[payload.defenderIndex];
+  if (caveEntranceChoiceText) {
+    caveEntranceChoiceText.textContent = `На этой клетке стоит ${defender?.name || `Игрок ${payload.defenderIndex + 1}`}. Выберите действие.`;
+  }
+  caveEntranceChoiceModal.style.display = "flex";
+}
+
+function closeCaveEntranceChoiceModal() {
+  pendingCaveEntranceChoice = null;
+  if (caveEntranceChoiceModal) caveEntranceChoiceModal.style.display = "none";
+  resumeTurnFlowAfterModalChange();
+}
+
+function executeCaveEntranceEnter(playerIndex, caveIndex) {
+  if (!players[playerIndex]) return false;
+  enterTrollCave(playerIndex, caveIndex);
+  endTurn();
+  if (typeof emitStateNow === "function") emitStateNow(true);
+  return true;
+}
+
+function executeCaveEntranceAttack(playerIndex, defenderIndex, gridX, gridY) {
+  const attacker = players[playerIndex];
+  const defender = players[defenderIndex];
+  if (!attacker || !defender) return false;
+  if (attacker.pocket.army <= 0) {
+    showPickupToast("В кармане нет войск для боя.");
+    return false;
+  }
+  if ((defender.invulnTurnsRemaining || 0) > 0) {
+    showPickupToast("На противника действует неприкосновенность — атака невозможна.");
+    return false;
+  }
+  clearReachable();
+  const attackerStartX = attacker.x;
+  const attackerStartY = attacker.y;
+  attacker.x = gridX;
+  attacker.y = gridY;
+  movesRemaining = 0;
+  updatePawns();
+  players.forEach((_, index) => updatePlayerResources(index));
+  beginPlayerBattleCardSelection(playerIndex, defenderIndex, {
+    targetX: gridX,
+    targetY: gridY,
+    noSteal: false,
+    defenderOwnsCastle: false,
+    attackerStartX,
+    attackerStartY
+  });
+  return true;
+}
+
+if (caveEnterBtn) {
+  caveEnterBtn.addEventListener("click", () => {
+    const choice = pendingCaveEntranceChoice;
+    if (!choice) return;
+    if (shouldRoutePrivateUiActionToHost(choice.playerIndex)) {
+      emitPrivateUiActionToHost({
+        modalType: "caveEntrance",
+        actionType: "enter",
+        playerIndex: choice.playerIndex,
+        payload: { caveIndex: choice.caveIndex }
+      });
+      closeCaveEntranceChoiceModal();
+      return;
+    }
+    closeCaveEntranceChoiceModal();
+    executeCaveEntranceEnter(choice.playerIndex, choice.caveIndex);
+  });
+}
+
+if (caveAttackBtn) {
+  caveAttackBtn.addEventListener("click", () => {
+    const choice = pendingCaveEntranceChoice;
+    if (!choice) return;
+    if (shouldRoutePrivateUiActionToHost(choice.playerIndex)) {
+      emitPrivateUiActionToHost({
+        modalType: "caveEntrance",
+        actionType: "attack",
+        playerIndex: choice.playerIndex,
+        payload: {
+          defenderIndex: choice.defenderIndex,
+          gridX: choice.gridX,
+          gridY: choice.gridY
+        }
+      });
+      closeCaveEntranceChoiceModal();
+      return;
+    }
+    closeCaveEntranceChoiceModal();
+    executeCaveEntranceAttack(
+      choice.playerIndex,
+      choice.defenderIndex,
+      choice.gridX,
+      choice.gridY
+    );
+  });
 }
 
 function getTimeOfDayInfoHtml() {
@@ -8363,6 +8500,14 @@ function openContextForKey(key, playerIndex) {
     return;
   }
   const specialEntry = specialByPos[key];
+  if (specialEntry && specialEntry.type === "troll-cave" && typeof getTrollCaveIndexByKey === "function") {
+    const caveIndex = getTrollCaveIndexByKey(key);
+    if (caveIndex >= 0) {
+      enterTrollCave(playerIndex, caveIndex);
+      endTurn();
+      return;
+    }
+  }
   if (specialEntry && specialEntry.disabled && specialEntry.ownerIndex === playerIndex) {
     openRepairModal({ ...specialEntry, key }, playerIndex);
     return;
@@ -11058,7 +11203,8 @@ const TURN_BLOCKING_MODALS = [
   () => tavernWheelModal,
   () => tavernDragonModal,
   () => tavernFishkaModal,
-  () => castleModal
+  () => castleModal,
+  () => caveEntranceChoiceModal
 ];
 
 function isElementShown(elem) {
@@ -11574,13 +11720,14 @@ const MOVES_DIRS = [
 
 function showReachable() {
   clearReachable();
-  if (ballistaModePlayerIndex === currentPlayerIndex) return;
-  if (harpoonModePlayerIndex === currentPlayerIndex) {
-    showHarpoonTargets(currentPlayerIndex);
+  const modeViewerIndex = getViewerWorldPlayerIndex();
+  if (ballistaModePlayerIndex === modeViewerIndex) return;
+  if (harpoonModePlayerIndex === modeViewerIndex) {
+    showHarpoonTargets(modeViewerIndex);
     return;
   }
-  if (bridgeModePlayerIndex === currentPlayerIndex) {
-    showBridgeTargets(currentPlayerIndex);
+  if (bridgeModePlayerIndex === modeViewerIndex) {
+    showBridgeTargets(modeViewerIndex);
     return;
   }
   if (movesRemaining <= 0) return;

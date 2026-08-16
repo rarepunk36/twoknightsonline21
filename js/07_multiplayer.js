@@ -1067,9 +1067,10 @@ function applyState(state) {
   }
 
   clearReachable();
-  if (ballistaModePlayerIndex === currentPlayerIndex && typeof showBallistaRange === "function") {
+  const modeViewerIndex = typeof localPlayerIndex === "number" ? localPlayerIndex : currentPlayerIndex;
+  if (ballistaModePlayerIndex === modeViewerIndex && typeof showBallistaRange === "function") {
     showBallistaRange(ballistaModePlayerIndex);
-  } else if (typeof harpoonModePlayerIndex !== "undefined" && harpoonModePlayerIndex === currentPlayerIndex && typeof showHarpoonTargets === "function") {
+  } else if (typeof harpoonModePlayerIndex !== "undefined" && harpoonModePlayerIndex === modeViewerIndex && typeof showHarpoonTargets === "function") {
     showHarpoonTargets(harpoonModePlayerIndex);
   } else {
     showReachable();
@@ -1429,6 +1430,16 @@ function performPrivateUiAction(action) {
           broadcastTavernSpectatorEvent(playerIndex, "tavernSpectatorShow", { playerIndex });
         }
         return;
+      }
+      return;
+    }
+    if (modalType === "caveEntrance") {
+      if (actionType === "enter" && typeof executeCaveEntranceEnter === "function") {
+        executeCaveEntranceEnter(playerIndex, payload.caveIndex);
+        return;
+      }
+      if (actionType === "attack" && typeof executeCaveEntranceAttack === "function") {
+        executeCaveEntranceAttack(playerIndex, payload.defenderIndex, payload.gridX, payload.gridY);
       }
       return;
     }
@@ -2070,6 +2081,14 @@ if (socket) {
       openTavernModal(payload.playerIndex);
       return;
     }
+    if (type === "showBarbarianRaidModal" && typeof openBarbarianRaidModal === "function") {
+      openBarbarianRaidModal(String(payload.text || ""));
+      return;
+    }
+    if (type === "showCaveEntranceChoiceModal" && typeof showCaveEntranceChoiceModal === "function") {
+      showCaveEntranceChoiceModal(payload);
+      return;
+    }
     if (type === "startTavernWheelSpin" && typeof beginTavernWheelSpinVisual === "function") {
       beginTavernWheelSpinVisual(payload);
       return;
@@ -2180,7 +2199,7 @@ if (socket) {
     if (!onlineMatchStarted) return;
     if (isHost || applyingRemoteState || performingRemoteAction) return;
     if (onlineGamePaused) return;
-    if (e.target?.closest?.("#castleModal, #tavernModal, #tavernWheelModal, #tavernDragonModal, #tavernFishkaModal, #hireModal, #trollCaveModal, #battleModal, #playerBattleCardModal, #worldEventModal, #kingAuctionModal, #kingGenerosityModal, #barracksModal, #lavkaModal, #workshopModal, #cityModal, #masterModal, #mageModal, #stoneModal, #stoneResultModal, #repairModal, #messengerModal, #guardModal")) {
+    if (e.target?.closest?.("#castleModal, #tavernModal, #tavernWheelModal, #tavernDragonModal, #tavernFishkaModal, #hireModal, #trollCaveModal, #barbarianRaidModal, #caveEntranceChoiceModal, #battleModal, #playerBattleCardModal, #worldEventModal, #kingAuctionModal, #kingGenerosityModal, #barracksModal, #lavkaModal, #workshopModal, #cityModal, #masterModal, #mageModal, #stoneModal, #stoneResultModal, #repairModal, #messengerModal, #guardModal")) {
       return;
     }
     const action = getActionFromEvent(e);
@@ -2204,7 +2223,7 @@ if (socket) {
     if (!onlineMatchStarted) return;
     if (!isHost || applyingRemoteState || performingRemoteAction) return;
     if (onlineGamePaused) return;
-    if (e.target?.closest?.("#castleModal, #tavernModal, #tavernWheelModal, #tavernDragonModal, #tavernFishkaModal, #hireModal, #trollCaveModal, #battleModal, #playerBattleCardModal, #worldEventModal, #kingAuctionModal, #kingGenerosityModal, #barracksModal, #lavkaModal, #workshopModal, #cityModal, #masterModal, #mageModal, #stoneModal, #stoneResultModal, #repairModal, #messengerModal, #guardModal")) {
+    if (e.target?.closest?.("#castleModal, #tavernModal, #tavernWheelModal, #tavernDragonModal, #tavernFishkaModal, #hireModal, #trollCaveModal, #barbarianRaidModal, #caveEntranceChoiceModal, #battleModal, #playerBattleCardModal, #worldEventModal, #kingAuctionModal, #kingGenerosityModal, #barracksModal, #lavkaModal, #workshopModal, #cityModal, #masterModal, #mageModal, #stoneModal, #stoneResultModal, #repairModal, #messengerModal, #guardModal")) {
       return;
     }
     const action = getActionFromEvent(e);

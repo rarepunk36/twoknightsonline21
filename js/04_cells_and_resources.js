@@ -750,6 +750,9 @@ function clearTrollTokenAt(key) {
   const token = cell.querySelector(".troll-token");
   if (token) token.remove();
   cell.classList.remove("troll");
+  if (cell.title && cell.title.indexOf("Тролли:") === 0) {
+    cell.removeAttribute("title");
+  }
 }
 
 function ensureTrollTokenAt(x, y) {
@@ -765,6 +768,9 @@ function ensureTrollTokenAt(x, y) {
     token.alt = "Тролли";
     cell.appendChild(token);
   }
+  const trollArmy =
+    typeof getTimeOfDay === "function" && getTimeOfDay().key === "evening" ? 20 : 25;
+  cell.title = `Тролли: ${trollArmy} войск`;
 }
 
 function updateTrollVisual() {
@@ -1833,6 +1839,17 @@ function resolveBarbarianCastleAttack(entry) {
       showPickupToast(
         `Варвары напали на замок ${targetName}: украдено ${goldStolen} золота и ${resourcesStolen} ресурсов. Куш спрятан в их лагере.`
       );
+    }
+    const victimMessage = `Варвары напали на ваш замок!\nУкрадено: ${goldStolen} золота, ${resourcesStolen} ресурсов.\nКуш спрятан в их лагере — верните его, победив варваров.`;
+    if (
+      typeof shouldDelegatePrivateUiToPlayer === "function" &&
+      shouldDelegatePrivateUiToPlayer(entry.targetPlayerIndex)
+    ) {
+      if (typeof emitPrivateUiToPlayer === "function") {
+        emitPrivateUiToPlayer(entry.targetPlayerIndex, "showBarbarianRaidModal", { text: victimMessage });
+      }
+    } else if (typeof openBarbarianRaidModal === "function") {
+      openBarbarianRaidModal(victimMessage);
     }
   }
   if (typeof emitStateNow === "function") emitStateNow(true);

@@ -258,6 +258,20 @@ game.addEventListener("click", e => {
       finalizeMove(gridX, gridY);
       return;
     }
+    const caveSpecialAtKey = specialByPos[key];
+    if (
+      caveSpecialAtKey &&
+      caveSpecialAtKey.type === "troll-cave" &&
+      typeof getTrollCaveIndexByKey === "function" &&
+      typeof openCaveEntranceChoiceModal === "function"
+    ) {
+      const caveIndex = getTrollCaveIndexByKey(key);
+      if (caveIndex >= 0) {
+        clearReachable();
+        openCaveEntranceChoiceModal(currentPlayerIndex, defenderIndex, caveIndex, gridX, gridY);
+        return;
+      }
+    }
     if (typeof isNonAggressionPactActive === "function" && isNonAggressionPactActive()) {
       showPrivatePickupToastForPlayer(currentPlayerIndex, "Пакт о ненападении запрещает атаковать другого игрока.");
       return;

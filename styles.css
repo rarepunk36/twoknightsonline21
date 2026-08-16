@@ -1077,6 +1077,8 @@
     #stoneModal,
     #stoneResultModal,
     #trollCaveModal,
+    #barbarianRaidModal,
+    #caveEntranceChoiceModal,
     #masterModal,
     #gameOverModal {
       position: fixed;
